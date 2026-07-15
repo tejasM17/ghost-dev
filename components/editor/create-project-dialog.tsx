@@ -15,6 +15,7 @@ interface CreateProjectDialogProps {
   error: string | null;
   isSubmitting: boolean;
   onSubmit: () => void;
+  roomId?: string;
 }
 
 export function CreateProjectDialog({
@@ -25,6 +26,7 @@ export function CreateProjectDialog({
   error,
   isSubmitting,
   onSubmit,
+  roomId,
 }: CreateProjectDialogProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -38,6 +40,7 @@ export function CreateProjectDialog({
 
   const previewSlug = slugify(name);
   const showPreview = previewSlug.length > 0;
+  const showRoomId = roomId && roomId.length > 0;
 
   return (
     <DialogPattern
@@ -95,11 +98,11 @@ export function CreateProjectDialog({
             id="project-name-slug"
             className="font-mono text-xs text-text-muted"
           >
-            <span className="text-text-faint">Slug:</span> /{previewSlug}
+            <span className="text-text-faint">Room ID:</span> /{showRoomId ? roomId : previewSlug}
           </p>
         ) : (
           <p id="project-name-slug" className="text-xs text-text-faint">
-            Slug will appear here as you type.
+            Room ID will appear here as you type.
           </p>
         )}
         {error ? (

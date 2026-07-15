@@ -1,92 +1,40 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useState } from "react";
+import { getCurrentUserId } from "@/lib/auth";
+import { getAllProjects } from "@/lib/projects";
+import { slugify } from "@/lib/mock-projects";
+import { EditorShell } from "@/components/editor/editor-shell";
 
-import { EditorHome } from "@/components/editor/editor-home";
-import { EditorNavbar } from "@/components/editor/editor-navbar";
-import { CreateProjectDialog } from "@/components/editor/create-project-dialog";
-import { DeleteProjectDialog } from "@/components/editor/delete-project-dialog";
-import { ProjectSidebar } from "@/components/editor/project-sidebar";
-import { RenameProjectDialog } from "@/components/editor/rename-project-dialog";
-import { useProjectDialogs } from "@/hooks/use-project-dialogs";
+/**
+ * Editor home page. Server component that fetches owned and shared projects
+ * server-side and passes them to the client shell for dialog/mutation handling.
+ */
+export default async function EditorPage() {
+  const userId = await getCurrentUserId();
 
-export default function EditorLayout() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const {
-    ownedProjects,
-    sharedProjects,
-    dialog,
-    activeProject,
-    name,
-    setName,
-    error,
-    isSubmitting,
-    openCreate,
-    openRename,
-    openDelete,
-    closeDialog,
-    submitCreate,
-    submitRename,
-    submitDelete,
-  } = useProjectDialogs();
+  // Redirect unauthenticated users to sign-in
+  if (!userId) {
+    redirect("/sign-in");
+  }
 
-  const isCreateOpen = dialog.kind === "create";
-  const isRenameOpen = dialog.kind === "rename";
-  const isDeleteOpen = dialog.kind === "delete";
+  const { owned, shared } = await getAllProjects(userId);
+
+  // Transform database records to the UI shape
+  const ownedProjects = owned.map((p) => ({
+    id: p.id,
+    name: p.name,
+    slug: slugify(p.name),
+    role: "owner" as const,
+  }));
+
+  const sharedProjects = shared.map((p) => ({
+    id: p.id,
+    name: p.name,
+    slug: slugify(p.name),
+    role: "collaborator" as const,
+  }));
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-base text-text-primary">
-      <EditorNavbar
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
-      />
-      <main className="relative flex-1 overflow-hidden">
-        <ProjectSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          ownedProjects={ownedProjects}
-          sharedProjects={sharedProjects}
-          onCreateProject={openCreate}
-          onRenameProject={openRename}
-          onDeleteProject={openDelete}
-        />
-        <EditorHome onCreateProject={openCreate} />
-      </main>
-
-      <CreateProjectDialog
-        open={isCreateOpen}
-        onOpenChange={(next) => {
-          if (!next) closeDialog();
-        }}
-        name={name}
-        onNameChange={setName}
-        error={isCreateOpen ? error : null}
-        isSubmitting={isSubmitting}
-        onSubmit={submitCreate}
-      />
-
-      <RenameProjectDialog
-        open={isRenameOpen}
-        onOpenChange={(next) => {
-          if (!next) closeDialog();
-        }}
-        currentName={activeProject?.name ?? ""}
-        name={name}
-        onNameChange={setName}
-        error={isRenameOpen ? error : null}
-        isSubmitting={isSubmitting}
-        onSubmit={submitRename}
-      />
-
-      <DeleteProjectDialog
-        open={isDeleteOpen}
-        onOpenChange={(next) => {
-          if (!next) closeDialog();
-        }}
-        projectName={activeProject?.name ?? ""}
-        isSubmitting={isSubmitting}
-        onConfirm={submitDelete}
-      />
-    </div>
+    <EditorShell initialOwned={ownedProjects} initialShared={sharedProjects} />
   );
 }
