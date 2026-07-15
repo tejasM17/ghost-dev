@@ -2,11 +2,37 @@
 
 import { useState } from "react";
 
+import { EditorHome } from "@/components/editor/editor-home";
 import { EditorNavbar } from "@/components/editor/editor-navbar";
+import { CreateProjectDialog } from "@/components/editor/create-project-dialog";
+import { DeleteProjectDialog } from "@/components/editor/delete-project-dialog";
 import { ProjectSidebar } from "@/components/editor/project-sidebar";
+import { RenameProjectDialog } from "@/components/editor/rename-project-dialog";
+import { useProjectDialogs } from "@/hooks/use-project-dialogs";
 
 export default function EditorLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const {
+    ownedProjects,
+    sharedProjects,
+    dialog,
+    activeProject,
+    name,
+    setName,
+    error,
+    isSubmitting,
+    openCreate,
+    openRename,
+    openDelete,
+    closeDialog,
+    submitCreate,
+    submitRename,
+    submitDelete,
+  } = useProjectDialogs();
+
+  const isCreateOpen = dialog.kind === "create";
+  const isRenameOpen = dialog.kind === "rename";
+  const isDeleteOpen = dialog.kind === "delete";
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-base text-text-primary">
@@ -18,9 +44,49 @@ export default function EditorLayout() {
         <ProjectSidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
+          ownedProjects={ownedProjects}
+          sharedProjects={sharedProjects}
+          onCreateProject={openCreate}
+          onRenameProject={openRename}
+          onDeleteProject={openDelete}
         />
-        <div className="h-full w-full" />
+        <EditorHome onCreateProject={openCreate} />
       </main>
+
+      <CreateProjectDialog
+        open={isCreateOpen}
+        onOpenChange={(next) => {
+          if (!next) closeDialog();
+        }}
+        name={name}
+        onNameChange={setName}
+        error={isCreateOpen ? error : null}
+        isSubmitting={isSubmitting}
+        onSubmit={submitCreate}
+      />
+
+      <RenameProjectDialog
+        open={isRenameOpen}
+        onOpenChange={(next) => {
+          if (!next) closeDialog();
+        }}
+        currentName={activeProject?.name ?? ""}
+        name={name}
+        onNameChange={setName}
+        error={isRenameOpen ? error : null}
+        isSubmitting={isSubmitting}
+        onSubmit={submitRename}
+      />
+
+      <DeleteProjectDialog
+        open={isDeleteOpen}
+        onOpenChange={(next) => {
+          if (!next) closeDialog();
+        }}
+        projectName={activeProject?.name ?? ""}
+        isSubmitting={isSubmitting}
+        onConfirm={submitDelete}
+      />
     </div>
   );
 }
