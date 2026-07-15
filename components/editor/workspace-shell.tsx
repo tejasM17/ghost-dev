@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { ProjectData } from "@/hooks/use-project-actions";
 import { AccessDenied } from "@/components/editor/access-denied";
+import { Canvas } from "@/components/editor/canvas";
 import { ShareDialog } from "@/components/editor/share-dialog";
 import { useShareDialog } from "@/hooks/use-share-dialog";
 
@@ -92,7 +93,7 @@ export function WorkspaceShell({
           sharedProjects={sharedProjects}
           currentRoomId={currentRoomId}
         />
-        <CanvasPlaceholder />
+        <Canvas roomId={currentRoomId} />
         <AiSidebar
           isOpen={isAiSidebarOpen}
           onClose={() => setIsAiSidebarOpen(false)}
@@ -363,22 +364,6 @@ function ProjectRow({ project, isActive }: ProjectRowProps) {
         </span>
       </div>
     </a>
-  );
-}
-
-/**
- * Canvas placeholder - dark background with centered message.
- * Real canvas logic will be added later.
- */
-function CanvasPlaceholder() {
-  return (
-    <div className="flex h-full items-center justify-center bg-bg-base">
-      <div className="flex max-w-md flex-col items-center gap-4 text-center">
-        <div className="text-sm text-text-muted">
-          Canvas placeholder — canvas logic coming soon
-        </div>
-      </div>
-    </div>
   );
 }
 
