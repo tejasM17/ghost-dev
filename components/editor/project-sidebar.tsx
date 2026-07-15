@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import type { MockProject } from "@/lib/mock-projects";
+import type { ProjectData } from "@/hooks/use-project-actions";
 
 interface ProjectSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  ownedProjects: MockProject[];
-  sharedProjects: MockProject[];
+  ownedProjects: ProjectData[];
+  sharedProjects: ProjectData[];
   onCreateProject: () => void;
   onRenameProject: (projectId: string) => void;
   onDeleteProject: (projectId: string) => void;
@@ -132,7 +132,7 @@ function EmptyState({ label }: { label: string }) {
 }
 
 interface ProjectListProps {
-  projects: MockProject[];
+  projects: ProjectData[];
   onRename: (projectId: string) => void;
   onDelete: (projectId: string) => void;
 }
@@ -154,7 +154,7 @@ function ProjectList({ projects, onRename, onDelete }: ProjectListProps) {
 }
 
 interface ProjectRowProps {
-  project: MockProject;
+  project: ProjectData;
   onRename: (projectId: string) => void;
   onDelete: (projectId: string) => void;
 }
