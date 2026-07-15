@@ -17,6 +17,7 @@ interface ProjectSidebarProps {
   onCreateProject: () => void;
   onRenameProject: (projectId: string) => void;
   onDeleteProject: (projectId: string) => void;
+  onOpenProject?: (projectId: string) => void;
 }
 
 export function ProjectSidebar({
@@ -27,6 +28,7 @@ export function ProjectSidebar({
   onCreateProject,
   onRenameProject,
   onDeleteProject,
+  onOpenProject,
 }: ProjectSidebarProps) {
   return (
     <>
@@ -92,6 +94,7 @@ export function ProjectSidebar({
                   projects={ownedProjects}
                   onRename={onRenameProject}
                   onDelete={onDeleteProject}
+                  onOpenProject={onOpenProject}
                 />
               )}
             </TabsContent>
@@ -106,6 +109,7 @@ export function ProjectSidebar({
                   projects={sharedProjects}
                   onRename={onRenameProject}
                   onDelete={onDeleteProject}
+                  onOpenProject={onOpenProject}
                 />
               )}
             </TabsContent>
@@ -135,9 +139,15 @@ interface ProjectListProps {
   projects: ProjectData[];
   onRename: (projectId: string) => void;
   onDelete: (projectId: string) => void;
+  onOpenProject?: (projectId: string) => void;
 }
 
-function ProjectList({ projects, onRename, onDelete }: ProjectListProps) {
+function ProjectList({
+  projects,
+  onRename,
+  onDelete,
+  onOpenProject,
+}: ProjectListProps) {
   return (
     <ul className="flex flex-col gap-1 p-2">
       {projects.map((project) => (
@@ -146,6 +156,7 @@ function ProjectList({ projects, onRename, onDelete }: ProjectListProps) {
             project={project}
             onRename={onRename}
             onDelete={onDelete}
+            onOpenProject={onOpenProject}
           />
         </li>
       ))}
@@ -157,12 +168,24 @@ interface ProjectRowProps {
   project: ProjectData;
   onRename: (projectId: string) => void;
   onDelete: (projectId: string) => void;
+  onOpenProject?: (projectId: string) => void;
 }
 
-function ProjectRow({ project, onRename, onDelete }: ProjectRowProps) {
+function ProjectRow({
+  project,
+  onRename,
+  onDelete,
+  onOpenProject,
+}: ProjectRowProps) {
   const isOwned = project.role === "owner";
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
+
+  function handleClick() {
+    if (onOpenProject) {
+      onOpenProject(project.id);
+    }
+  }
 
   React.useEffect(() => {
     if (!menuOpen) return;
@@ -185,8 +208,16 @@ function ProjectRow({ project, onRename, onDelete }: ProjectRowProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          handleClick();
+        }
+      }}
       className={cn(
-        "group flex items-center gap-2 rounded-xl border border-transparent px-3 py-2 transition-colors",
+        "group flex cursor-pointer items-center gap-2 rounded-xl border border-transparent px-3 py-2 transition-colors",
         "hover:border-border-subtle hover:bg-bg-elevated",
       )}
     >
