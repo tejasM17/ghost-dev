@@ -1,0 +1,40 @@
+// Project metadata and collaborator access for the editor.
+//
+// `Project` is owned by a single Clerk user. `ProjectCollaborator` grants
+// additional users edit access to a project and is cascade-deleted with it.
+
+enum ProjectStatus {
+  DRAFT
+  ARCHIVED
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  ownerId         String        @map("owner_id")
+  name            String
+  description     String?
+  status          ProjectStatus @default(DRAFT)
+  canvasJsonPath  String?       @map("canvas_json_path")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  collaborators   ProjectCollaborator[]
+
+  @@index([ownerId])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+model ProjectCollaborator {
+  id           String   @id @default(cuid())
+  projectId    String   @map("project_id")
+  email        String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, email])
+  @@index([email])
+  @@index([projectId, createdAt])
+  @@map("project_collaborators")
+}
