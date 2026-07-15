@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { getProjectWithAccess } from "@/lib/project-access";
 import { getAllProjects } from "@/lib/projects";
 import { slugify } from "@/lib/mock-projects";
@@ -18,8 +18,8 @@ export default async function EditorRoomPage({ params }: EditorRoomPageProps) {
   const { roomId } = await params;
 
   // Check authentication
-  const userId = await getCurrentUserId();
-  if (!userId) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
     redirect("/sign-in");
   }
 
@@ -37,8 +37,8 @@ export default async function EditorRoomPage({ params }: EditorRoomPageProps) {
     );
   }
 
-  // Fetch all projects for the sidebar
-  const { owned, shared } = await getAllProjects(userId);
+  // Fetch all projects for the sidebar (owned by userId, shared by email)
+  const { owned, shared } = await getAllProjects(currentUser.userId, currentUser.email);
 
   // Transform to UI shape
   const ownedProjects = owned.map((p) => ({
@@ -57,7 +57,7 @@ export default async function EditorRoomPage({ params }: EditorRoomPageProps) {
 
   return (
     <WorkspaceShell
-      project={{ id: project.id, name: project.name }}
+      project={{ id: project.id, name: project.name, ownerId: project.ownerId }}
       currentRoomId={roomId}
       ownedProjects={ownedProjects}
       sharedProjects={sharedProjects}

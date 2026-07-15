@@ -4,7 +4,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Feature 08 (Editor workspace shell) — completed
+- Feature 09 (Share dialog) — completed
 
 ## Current Goal
 
@@ -20,6 +20,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - feature 06: Project API routes — `lib/auth.ts` exposes `getCurrentUserId()` which returns the Clerk `userId` from `auth()` (or `null` if unauthenticated). `app/api/projects/route.ts` handles `GET` (lists the current user's projects, ordered by `createdAt` desc, uses the existing `ownerId` index) and `POST` (creates a project owned by the current user, defaults missing/blank name to `Untitled Project`, id stays on Prisma's existing `@default(cuid())` — no sequential IDs added). `app/api/projects/[projectId]/route.ts` handles `PATCH` (renames, requires a non-empty trimmed name) and `DELETE`. Both dynamic-route handlers resolve `params` as a `Promise` per Next.js 16, look up the project with `findUnique({ select: { id, ownerId }})`, return 404 when missing and 403 when the current user is not the owner, and return 401 for unauthenticated requests. `DELETE` returns 204 with an empty body; `PATCH` returns the updated project. Body parsing is wrapped in `try`/`catch` so a missing or malformed body resolves to a 400 on `PATCH` and to the default name on `POST`. `npm run build` passes; no new lint errors (the two pre-existing shadcn warnings are unchanged).
 - feature 07: Wire editor home to project API — Editor page converted to server component that fetches owned and shared projects server-side via `getAllProjects()` from `lib/projects.ts`. Client-side state and mutations managed by new `useProjectActions` hook in `hooks/use-project-actions.ts` which handles create (generates room ID with slug + suffix, POSTs to API, navigates to new workspace), rename (PATCH to API, updates local state on success), and delete (DELETE to API, refreshes router on success). `CreateProjectDialog` now shows "Room ID" preview instead of "Slug". Sidebar updated to accept `ProjectData` type from the hook instead of `MockProject`. `app/editor/page.tsx` now redirects unauthenticated users to `/sign-in`. Old `useProjectDialogs` hook removed. `npm run build` passes; no new lint errors.
 - feature 08: Editor workspace shell — Built `/editor/[roomId]` workspace shell with server-side access checks. Created `lib/project-access.ts` with `getCurrentUser()` (returns `userId` + primary email from Clerk) and `getProjectWithAccess()` (checks owner or collaborator access). Created `components/editor/access-denied.tsx` with centered layout, lock icon, message, and link back to `/editor`. Created `app/editor/[roomId]/page.tsx` as a server component that checks authentication (redirects to `/sign-in`), validates project access (shows `AccessDenied` for missing/unauthorized projects), and passes data to the client shell. Created `components/editor/workspace-shell.tsx` with full-viewport layout: top navbar showing project name, share button, AI chat toggle, left sidebar (with current room highlighted), central canvas placeholder (dark background + centered message), and right sidebar placeholder for future AI chat. `npm run build` passes; no new lint errors (pre-existing shadcn warnings in `components/ui/input.tsx` and `components/ui/textarea.tsx` unchanged).
+- feature 09: Share dialog — Added Share button to the editor navbar that opens the share dialog. Created `app/api/projects/[projectId]/collaborators/route.ts` for listing and inviting collaborators, and `app/api/projects/[projectId]/collaborators/[collaboratorId]/route.ts` for removing collaborators. Both enforce ownership server-side for invite and remove actions. Created `lib/auth.ts` helpers `getClerkUserByEmail()` and `getClerkUsersByEmails()` to enrich collaborator emails with display name and avatar from Clerk (falls back to showing email only when user not found). Created `components/editor/share-dialog.tsx` with the share dialog UI that shows project link (copyable with "Copied!" feedback), invite form (owners only), collaborator list (shows avatar + name when available from Clerk, email otherwise), and remove button (owners only). Created `hooks/use-share-dialog.ts` to manage share dialog state and API interactions. Updated `components/editor/workspace-shell.tsx` to include the share dialog and wire the Share button. Updated `app/editor/[roomId]/page.tsx` to pass `ownerId` to determine owner vs collaborator view. `npm run build` passes; no new lint errors.
 
 ## In Progress
 
@@ -27,7 +28,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- feature 09: TBD
+- feature 10: TBD
 
 ## Open Questions
 

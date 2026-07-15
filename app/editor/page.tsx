@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { getAllProjects } from "@/lib/projects";
 import { slugify } from "@/lib/mock-projects";
 import { EditorShell } from "@/components/editor/editor-shell";
@@ -10,14 +10,14 @@ import { EditorShell } from "@/components/editor/editor-shell";
  * server-side and passes them to the client shell for dialog/mutation handling.
  */
 export default async function EditorPage() {
-  const userId = await getCurrentUserId();
+  const currentUser = await getCurrentUser();
 
   // Redirect unauthenticated users to sign-in
-  if (!userId) {
+  if (!currentUser) {
     redirect("/sign-in");
   }
 
-  const { owned, shared } = await getAllProjects(userId);
+  const { owned, shared } = await getAllProjects(currentUser.userId, currentUser.email);
 
   // Transform database records to the UI shape
   const ownedProjects = owned.map((p) => ({

@@ -26,10 +26,11 @@ export async function getOwnedProjects(userId: string): Promise<Project[]> {
 /**
  * Fetch all projects the given user has been invited to collaborate on.
  * Returns the project data along with the collaborator email.
+ * @param userEmail - The user's email address to match against collaborators
  */
-export async function getSharedProjects(userId: string): Promise<Project[]> {
+export async function getSharedProjects(userEmail: string): Promise<Project[]> {
   const collaborators = await prisma.projectCollaborator.findMany({
-    where: { email: userId },
+    where: { email: userEmail.toLowerCase() },
     include: { project: true },
     orderBy: { createdAt: "desc" },
   });
@@ -39,14 +40,16 @@ export async function getSharedProjects(userId: string): Promise<Project[]> {
 
 /**
  * Fetch both owned and shared projects for a user.
+ * @param userId - The Clerk user ID for owned projects
+ * @param userEmail - The user's email address for shared projects
  */
-export async function getAllProjects(userId: string): Promise<{
+export async function getAllProjects(userId: string, userEmail: string): Promise<{
   owned: Project[];
   shared: Project[];
 }> {
   const [owned, shared] = await Promise.all([
     getOwnedProjects(userId),
-    getSharedProjects(userId),
+    getSharedProjects(userEmail),
   ]);
 
   return { owned, shared };

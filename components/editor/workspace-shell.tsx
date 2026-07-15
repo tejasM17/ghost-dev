@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { PanelLeftClose, PanelLeftOpen, Share2, MessageSquare, X } from "lucide-react";
 
@@ -11,9 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { ProjectData } from "@/hooks/use-project-actions";
 import { AccessDenied } from "@/components/editor/access-denied";
+import { ShareDialog } from "@/components/editor/share-dialog";
+import { useShareDialog } from "@/hooks/use-share-dialog";
 
 interface WorkspaceShellProps {
-  project: { id: string; name: string } | null;
+  project: { id: string; name: string; ownerId: string } | null;
   currentRoomId: string;
   ownedProjects: ProjectData[];
   sharedProjects: ProjectData[];
@@ -29,13 +30,19 @@ export function WorkspaceShell({
   ownedProjects,
   sharedProjects,
 }: WorkspaceShellProps) {
-  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
 
-  const handleOpenProject = (projectId: string) => {
-    router.push(`/editor/${projectId}`);
-  };
+  // Determine if current user is owner by checking against the projects list
+  const isOwner = project
+    ? ownedProjects.some((p) => p.id === project.id && p.role === "owner")
+    : false;
+
+  // Share dialog state
+  const shareDialog = useShareDialog(
+    project?.id ?? "",
+    isOwner,
+  );
 
   // If no project access, show access denied
   if (!project) {
@@ -47,6 +54,7 @@ export function WorkspaceShell({
           onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
           onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
           aiSidebarOpen={isAiSidebarOpen}
+          onShareClick={() => {}}
         />
         <main className="relative flex-1 overflow-hidden">
           <ProjectSidebar
@@ -74,6 +82,7 @@ export function WorkspaceShell({
         onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
         onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
         aiSidebarOpen={isAiSidebarOpen}
+        onShareClick={shareDialog.onOpenChange}
       />
       <main className="relative flex-1 overflow-hidden">
         <ProjectSidebar
@@ -89,6 +98,23 @@ export function WorkspaceShell({
           onClose={() => setIsAiSidebarOpen(false)}
         />
       </main>
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={shareDialog.open}
+        onOpenChange={shareDialog.onOpenChange}
+        projectId={project.id}
+        isOwner={shareDialog.isOwner}
+        collaborators={shareDialog.collaborators}
+        isLoading={shareDialog.isLoading}
+        error={shareDialog.error}
+        inviteEmail={shareDialog.inviteEmail}
+        onInviteEmailChange={shareDialog.onInviteEmailChange}
+        onInvite={shareDialog.onInvite}
+        onRemove={shareDialog.onRemove}
+        onCopyLink={shareDialog.onCopyLink}
+        copied={shareDialog.copied}
+      />
     </div>
   );
 }
@@ -99,6 +125,7 @@ interface EditorNavbarProps {
   aiSidebarOpen: boolean;
   onToggleSidebar: () => void;
   onToggleAiSidebar: () => void;
+  onShareClick: (open: boolean) => void;
 }
 
 function EditorNavbar({
@@ -107,6 +134,7 @@ function EditorNavbar({
   aiSidebarOpen,
   onToggleSidebar,
   onToggleAiSidebar,
+  onShareClick,
 }: EditorNavbarProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-bg-surface px-4">
@@ -138,8 +166,7 @@ function EditorNavbar({
           variant="ghost"
           size="sm"
           className="gap-2"
-          // Sharing not implemented yet
-          onClick={() => {}}
+          onClick={() => onShareClick(true)}
         >
           <Share2 className="h-4 w-4" />
           Share
@@ -180,7 +207,6 @@ interface ProjectSidebarProps {
   ownedProjects: ProjectData[];
   sharedProjects: ProjectData[];
   currentRoomId: string;
-  onOpenProject?: (projectId: string) => void;
 }
 
 function ProjectSidebar({
@@ -189,7 +215,6 @@ function ProjectSidebar({
   ownedProjects,
   sharedProjects,
   currentRoomId,
-  onOpenProject,
 }: ProjectSidebarProps) {
   return (
     <>
@@ -252,7 +277,6 @@ function ProjectSidebar({
               <ProjectList
                 projects={ownedProjects}
                 currentRoomId={currentRoomId}
-                onOpenProject={onOpenProject}
               />
             </TabsContent>
             <TabsContent
@@ -262,7 +286,6 @@ function ProjectSidebar({
               <ProjectList
                 projects={sharedProjects}
                 currentRoomId={currentRoomId}
-                onOpenProject={onOpenProject}
               />
             </TabsContent>
           </ScrollArea>
@@ -288,13 +311,11 @@ function ProjectSidebar({
 interface ProjectListProps {
   projects: ProjectData[];
   currentRoomId: string;
-  onOpenProject?: (projectId: string) => void;
 }
 
 function ProjectList({
   projects,
   currentRoomId,
-  onOpenProject,
 }: ProjectListProps) {
   if (projects.length === 0) {
     return (
