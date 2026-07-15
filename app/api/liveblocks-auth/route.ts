@@ -1,0 +1,95 @@
+import { NextResponse } from "next/server";
+
+import {
+  getClerkUserByEmail,
+  getCurrentUser,
+} from "@/lib/auth";
+import { getUserColor, liveblocks } from "@/lib/liveblocks";
+import { getProjectWithAccess } from "@/lib/project-access";
+
+/**
+ * Liveblocks ID-token auth endpoint.
+ *
+ * Flow:
+ *   1. Resolve the current Clerk user (401 if not signed in).
+ *   2. Verify the project referenced by `room` exists and the current
+ *      user is the owner or a collaborator (403 if not).
+ *   3. Ensure the Liveblocks room exists for the project (create it on
+ *      first access with default write access for room members).
+ *   4. Mint an ID token with the user's display name, avatar, and a
+ *      deterministically-derived cursor color.
+ *
+ * The room ID is the project ID, so this route works for any project the
+ * caller can see.
+ */
+export async function POST(request: Request) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Liveblocks sends the active RoomProvider ID as `{ room }` when an
+  // `authEndpoint` URL is configured. That ID is the project ID here.
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch {
+    body = null;
+  }
+
+  const roomId =
+    body !== null && typeof body === "object" && "room" in body
+      ? (body as { room: unknown }).room
+      : null;
+
+  if (typeof roomId !== "string" || roomId.length === 0) {
+    return NextResponse.json(
+      { error: "room is required" },
+      { status: 400 },
+    );
+  }
+
+  // Verify project access. Returns null when the project doesn't exist OR
+  // the user has no membership — spec mandates 403 in both cases.
+  const project = await getProjectWithAccess(roomId);
+  if (!project) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Resolve display name and avatar from Clerk. Falls back to safe
+  // defaults if the user lookup fails (e.g. a collaborator email that
+  // isn't associated with a Clerk account yet).
+  const clerkUser = await getClerkUserByEmail(currentUser.email);
+  const name = clerkUser?.name ?? currentUser.email;
+  const avatar = clerkUser?.avatarUrl ?? "";
+  const color = getUserColor(currentUser.userId);
+
+  // Ensure the room exists. We use ID tokens, so the room must have at
+  // least one access entry — `defaultAccesses: []` would lock everyone
+  // out, and `["room:write"]` would let any token holder join.
+  // Project membership is enforced by step 2 above, so we keep the room
+  // private (empty defaults) and rely on per-user access.
+  try {
+    await liveblocks.getOrCreateRoom(roomId, {
+      defaultAccesses: [],
+      usersAccesses: {
+        [currentUser.userId]: ["room:write"],
+      },
+    });
+  } catch (error) {
+    console.error("Failed to ensure Liveblocks room exists", error);
+    return NextResponse.json(
+      { error: "Failed to prepare collaboration room" },
+      { status: 500 },
+    );
+  }
+
+  // Mint an ID token bound to the current user. The userInfo payload is
+  // what other clients read via useSelf / useOthers.
+  const { status, body: responseBody } = await liveblocks.identifyUser(
+    { userId: currentUser.userId, groupIds: [] },
+    { userInfo: { name, avatar, color } },
+  );
+
+  return new Response(responseBody, { status });
+}
