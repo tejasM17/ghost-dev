@@ -16,7 +16,6 @@ import {
   BackgroundVariant,
   ConnectionMode,
   MarkerType,
-  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
@@ -45,6 +44,7 @@ import { NODE_COLORS } from "@/types/canvas";
 import { ShapePanel, type ShapeDragPayload } from "./shape-panel";
 import { CanvasNodeRenderer } from "./canvas-node";
 import { CanvasEdgeRenderer } from "./canvas-edge";
+import { CanvasControls } from "./canvas-controls";
 
 /** Default style for newly created edges — light stroke, rounded ends, arrow. */
 const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
@@ -286,16 +286,10 @@ function CollaborativeFlow() {
           size={1}
           color="var(--border-subtle)"
         />
-        <MiniMap
-          pannable
-          zoomable
-          className="!bg-bg-surface/80 !border !border-border-default !rounded-xl !shadow-lg"
-          nodeColor="var(--text-muted)"
-          maskColor="rgba(8, 8, 9, 0.7)"
-        />
       </ReactFlow>
 
-      {/* Shape panel for dragging shapes onto the canvas */}
+      {/* Zoom + undo/redo bar (bottom-left); shape palette (bottom-center) */}
+      <CanvasControls />
       <ShapePanel />
     </div>
   );
