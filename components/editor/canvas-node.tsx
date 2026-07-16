@@ -38,7 +38,7 @@ function CanvasNode({ data, selected }: NodeProps) {
       justifyContent: "center",
       borderRadius: shape === "circle" ? "9999px" : shape === "pill" ? "9999px" : "8px",
       backgroundColor: colorPair.fill,
-      border: `2px ${selected ? "var(--accent-primary)" : colorPair.fill}`,
+      border: `2px solid ${selected ? "var(--accent-primary)" : colorPair.fill}`,
       boxShadow: selected
         ? `0 0 0 2px var(--accent-primary), 0 4px 12px rgba(0,0,0,0.3)`
         : "none",

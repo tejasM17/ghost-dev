@@ -8,7 +8,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Goal
 
-- Fixing the canvas error, and drag and drop feature
+- Describe the immiediate goals olny
 
 ## Completed
 
