@@ -4,7 +4,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Feature 12 — (compleated)
+- Feature 14 — (completed)
 
 ## Current Goal
 
@@ -24,6 +24,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - feature 10: Liveblocks setup — `liveblocks.config.ts` types the required presence and user metadata. `lib/liveblocks.ts` provides a cached node client and deterministic user-color helper. `POST /api/liveblocks-auth` requires Clerk authentication, accepts Liveblocks’ `{ room }` auth payload (the project ID), verifies project access through `lib/project-access`, creates a private room with per-user write access, and returns an ID-token session with name, avatar, and cursor color. `npm run build` passes.
 - feature 11: Base canvas — `types/canvas.ts` defines the shared canvas node and edge types. `components/editor/canvas.tsx` sets up `LiveblocksProvider`, `RoomProvider`, initial presence, error and suspense loading fallbacks, then passes `useLiveblocksFlow`’s synced state and handlers into a basic React Flow canvas with loose connections, fit view, MiniMap, and dot background. It intentionally contains no custom node or edge rendering, persistence, controls, or AI behavior. `workspace-shell.tsx` renders the canvas for the active project. `npm run build` passes.
 - feature 12: Shape panel — Added a floating pill-shaped toolbar at the bottom-center of the canvas with draggable icon buttons for rectangle, diamond, circle, pill, cylinder, and hexagon. Drag payloads include the shape name and default sizes (rectangles wider, circles square, diamonds larger for labels). Added `dragover` and `drop` handlers to the canvas wrapper that read the payload, convert screen position to canvas coordinates using `screenToFlowPosition`, and create new nodes at that position with empty label, default color, and the dragged shape. Node IDs are generated using the shape name, timestamp, and a counter. Created `CanvasNodeRenderer` component to render nodes as bordered rectangles with centered labels (shape-specific visuals to be added later). `npm run build` passes.
+- feature 13: Node shape rendering — Replaced the placeholder `CanvasNodeRenderer` with proper per-shape visuals via shared `NodeShapeVisual` (`components/editor/node-shape-visual.tsx`). CSS shapes: rectangle (rounded-lg), pill (full radius), circle (full radius). SVG shapes: diamond, hexagon, and cylinder, all scaling with node width/height. Borders use a muted text-color alpha at rest and the full palette text color when the node is selected. Shape panel drag shows a cursor-attached ghost preview (same shape + default size, semi-transparent) that clears on drop or drag cancel; browser default drag image is suppressed. Drop/create logic and panel layout unchanged; still driven by Liveblocks collaborative state. `npm run build` passes.
+- feature 14: Node editing — Selected nodes show React Flow `NodeResizer` handles (min 80×40, subtle dark-canvas styling). Double-click opens centered inline label editing via an overlaid `textarea` (`nodrag` / `nopan` / `nowheel` so text interaction does not drag or pan). Label updates as the user types through `useReactFlow().updateNodeData`, which emits replace changes into Liveblocks via the existing `onNodesChange` path. Editing closes on blur or Escape. Empty labels show a centered muted "Label" placeholder (nodes only; drag ghosts stay blank). All four sides expose connectable `Handle`s (top/right/bottom/left). Shape rendering geometry, shape panel, and drop-create logic unchanged. `npm run build` passes.
 
 ## In Progress
 
@@ -31,7 +33,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- feature 13: TBD
+- feature 15: TBD
 
 ## Open Questions
 
@@ -48,6 +50,9 @@ Update this file whenever the current phase, active feature, or implementation s
 ## Session Notes
 
 - Add context needed to resume work in the next session.
+- 2026-07-16: feature 14 implemented exactly per spec. Resize via `NodeResizer` (visible only when selected, min size enforced). Label edit via double-click → centered textarea overlay; live `updateNodeData` writes through Liveblocks; close on blur/Escape; `nodrag`/`nopan` block canvas interaction while typing. Four side handles for connections. Scope limited to resize + label editing (no shape panel / drop / geometry changes).
+- 2026-07-16: feature 13 implemented exactly per spec. Shared visual component powers both nodes and the drag ghost so preview matches drop. Scope limited to shape rendering + drag preview only (no resize, label editing, or drop-logic changes).
+
 - 2026-07-15: Features 10 and 11 were reconciled with their specifications and verified. The Liveblocks auth endpoint now accepts the SDK's `{ room }` payload from `LiveblocksProvider` (the room is the project ID), fixing the previous `roomId is required` 400 and resulting connection failure. It uses the workspace project-access helper before creating the private room and issuing the ID token. `liveblocks.config.ts` now types the specified presence and user metadata. The base canvas remains limited to the specified Liveblocks-backed React Flow foundation; premature custom node and edge renderers were removed. `npm run build` passes with no Liveblocks-related errors.
 - 2026-07-15: Development startup dependencies were aligned with the implemented Next.js 16 App Router and Prisma 7 code: `next` is pinned to `16.2.10`, `prisma` to `^7.8.0`, and Clerk UI to `^1.25.3`. Added the missing `@liveblocks/node@3.22.0` server SDK required by `app/api/liveblocks-auth`. `npm run build` now completes successfully and `npm run dev` is running on `http://localhost:3000`.
 - 2026-07-14: feature 03 auth pages UI refined to match the reference layout — 50/50 grid, brand panel on the left with logo + headline + three icon-chipped feature rows + footer copyright, form panel on the right with a rounded-3xl `bg-bg-elevated` card housing the Clerk form and a contextual "Don't have an account? / Sign up" link below. Left panel uses `bg-bg-surface` so it differentiates from the base. Brand wordmark is "Ghost dev" (matches the screenshot). Geist Sans is the body default from `--font-geist-sans`; no new fonts added.
