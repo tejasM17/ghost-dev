@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 17** — completed
-- Next: feature 18 (TBD)
+- **Feature 18** — completed
+- Next: feature 19 (TBD)
 
 ## Stack (quick)
 
@@ -18,7 +18,7 @@ Keep this file short. Read feature specs + code for detail.
 | Canvas | Liveblocks + React Flow (`@liveblocks/react-flow`) |
 | Types | `types/canvas.ts` — `CanvasNode` / `CanvasEdge` |
 
-## Done (features 01–17)
+## Done (features 01–18)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -39,15 +39,17 @@ Keep this file short. Read feature specs + code for detail.
 | 15 | Color toolbar | `node-color-toolbar.tsx`, `NODE_COLORS` |
 | 16 | Edge behavior | `canvas-edge.tsx` — smooth-step, arrows, labels |
 | 17 | Canvas ergonomics | `canvas-controls.tsx`, `hooks/useKeyboardShortcuts.ts` |
+| 18 | Starter templates | `starter-templates.ts`, `starter-templates-modal.tsx` |
 
-## Feature 17 (current)
+## Feature 18 (current)
 
-- Bottom-left pill bar: zoom out / fit / zoom in | undo / redo
-- Zoom → React Flow (`duration: 200`)
-- Undo/redo → Liveblocks `useUndo` / `useRedo` / `useCanUndo` / `useCanRedo`
-- Shortcuts (window): `+`/`=` zoom in, `-` zoom out, `Mod+Z` undo, `Mod+Shift+Z` / `Mod+Y` redo
-- Skip shortcuts in input/textarea/contenteditable
-- MiniMap removed
+- Built-in templates: Microservices, CI/CD Pipeline, Event-Driven System
+- Template data uses shared `CanvasNode` / `CanvasEdge` + `NODE_COLORS` palette
+- Import modal: card grid with lightweight SVG previews (no React Flow)
+- Navbar **Templates** button opens modal
+- Import clears existing nodes/edges first, then adds template (replace, not merge)
+- Fresh IDs on import; `fitView` after load; stays in Liveblocks collaborative state
+- No template saving / custom templates / server persistence
 
 ## Architecture invariants
 

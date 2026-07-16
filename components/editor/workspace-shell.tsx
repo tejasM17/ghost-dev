@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { UserButton } from "@clerk/nextjs";
-import { PanelLeftClose, PanelLeftOpen, Share2, X, Network, Sparkles, Bot } from "lucide-react";
+import {
+  PanelLeftClose,
+  PanelLeftOpen,
+  Share2,
+  X,
+  Network,
+  Sparkles,
+  Bot,
+  LayoutTemplate,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -33,6 +42,7 @@ export function WorkspaceShell({
 }: WorkspaceShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   // Determine if current user is owner by checking against the projects list
   const isOwner = project
@@ -84,10 +94,15 @@ export function WorkspaceShell({
         onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
         aiSidebarOpen={isAiSidebarOpen}
         onShareClick={shareDialog.onOpenChange}
+        onTemplatesClick={() => setTemplatesOpen(true)}
       />
       <main className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0">
-          <Canvas roomId={currentRoomId} />
+          <Canvas
+            roomId={currentRoomId}
+            templatesOpen={templatesOpen}
+            onTemplatesOpenChange={setTemplatesOpen}
+          />
         </div>
         <ProjectSidebar
           isOpen={isSidebarOpen}
@@ -129,6 +144,8 @@ interface EditorNavbarProps {
   onToggleSidebar: () => void;
   onToggleAiSidebar: () => void;
   onShareClick: (open: boolean) => void;
+  /** Opens the starter templates import modal. Omitted when canvas is unavailable. */
+  onTemplatesClick?: () => void;
 }
 
 function EditorNavbar({
@@ -138,6 +155,7 @@ function EditorNavbar({
   onToggleSidebar,
   onToggleAiSidebar,
   onShareClick,
+  onTemplatesClick,
 }: EditorNavbarProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-bg-surface px-4">
@@ -167,6 +185,18 @@ function EditorNavbar({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {onTemplatesClick ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            onClick={onTemplatesClick}
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            Templates
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="ghost"

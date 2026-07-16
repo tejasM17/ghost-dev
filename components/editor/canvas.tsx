@@ -45,6 +45,11 @@ import { ShapePanel, type ShapeDragPayload } from "./shape-panel";
 import { CanvasNodeRenderer } from "./canvas-node";
 import { CanvasEdgeRenderer } from "./canvas-edge";
 import { CanvasControls } from "./canvas-controls";
+import { StarterTemplatesModal } from "./starter-templates-modal";
+import {
+  cloneTemplateWithFreshIds,
+  type CanvasTemplate,
+} from "./starter-templates";
 
 /** Default style for newly created edges — light stroke, rounded ends, arrow. */
 const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
@@ -67,6 +72,9 @@ const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
 
 interface CanvasProps {
   roomId: string;
+  /** Controlled open state for the starter templates import modal. */
+  templatesOpen?: boolean;
+  onTemplatesOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -77,7 +85,11 @@ interface CanvasProps {
  * the foundation of the editor — node/edge rendering and persistence
  * land in later features.
  */
-export function Canvas({ roomId }: CanvasProps) {
+export function Canvas({
+  roomId,
+  templatesOpen = false,
+  onTemplatesOpenChange,
+}: CanvasProps) {
   return (
     <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
       <RoomProvider
@@ -87,7 +99,10 @@ export function Canvas({ roomId }: CanvasProps) {
         <CanvasErrorBoundary>
           <ClientSideSuspense fallback={<CanvasLoading />}>
             <ReactFlowProvider>
-              <CollaborativeFlow />
+              <CollaborativeFlow
+                templatesOpen={templatesOpen}
+                onTemplatesOpenChange={onTemplatesOpenChange}
+              />
             </ReactFlowProvider>
           </ClientSideSuspense>
         </CanvasErrorBoundary>
@@ -155,13 +170,21 @@ function generateNodeId(shape: NodeShape): string {
   return `${shape}-${timestamp}-${nodeIdCounter}`;
 }
 
+interface CollaborativeFlowProps {
+  templatesOpen: boolean;
+  onTemplatesOpenChange?: (open: boolean) => void;
+}
+
 /**
  * The actual React Flow surface, rendered after Liveblocks has connected
  * and the storage layer is ready (via Suspense).
  */
-function CollaborativeFlow() {
+function CollaborativeFlow({
+  templatesOpen,
+  onTemplatesOpenChange,
+}: CollaborativeFlowProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
   // `useLiveblocksFlow` returns the synced nodes/edges plus change
   // handlers. With `suspense: true`, `nodes` and `edges` are guaranteed
@@ -185,6 +208,48 @@ function CollaborativeFlow() {
       lbOnNodesChange(changes);
     },
     [lbOnNodesChange],
+  );
+
+  /**
+   * Replace the entire collaborative graph with a starter template.
+   * Clears existing nodes/edges first, then adds the template graph and
+   * fits the view once the new elements are in place.
+   */
+  const handleImportTemplate = useCallback(
+    (template: CanvasTemplate) => {
+      const { nodes: nextNodes, edges: nextEdges } =
+        cloneTemplateWithFreshIds(template);
+
+      // Remove every existing edge, then every existing node.
+      if (edges.length > 0) {
+        onEdgesChange(
+          edges.map((edge) => ({ type: "remove" as const, id: edge.id })),
+        );
+      }
+      if (nodes.length > 0) {
+        onNodesChange(
+          nodes.map((node) => ({ type: "remove" as const, id: node.id })),
+        );
+      }
+
+      // Add template graph into collaborative storage.
+      if (nextNodes.length > 0) {
+        onNodesChange(
+          nextNodes.map((node) => ({ type: "add" as const, item: node })),
+        );
+      }
+      if (nextEdges.length > 0) {
+        onEdgesChange(
+          nextEdges.map((edge) => ({ type: "add" as const, item: edge })),
+        );
+      }
+
+      // Fit after React Flow has applied the new graph.
+      window.setTimeout(() => {
+        void fitView({ duration: 200, padding: 0.15 });
+      }, 50);
+    },
+    [edges, nodes, onEdgesChange, onNodesChange, fitView],
   );
 
   // Memoized type maps — stable refs so React Flow does not remount nodes/edges
@@ -291,6 +356,14 @@ function CollaborativeFlow() {
       {/* Zoom + undo/redo bar (bottom-left); shape palette (bottom-center) */}
       <CanvasControls />
       <ShapePanel />
+
+      {onTemplatesOpenChange ? (
+        <StarterTemplatesModal
+          open={templatesOpen}
+          onOpenChange={onTemplatesOpenChange}
+          onImport={handleImportTemplate}
+        />
+      ) : null}
     </div>
   );
 }
