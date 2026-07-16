@@ -9,9 +9,9 @@ import Link from "next/link";
  */
 export function AccessDenied() {
   return (
-    <div className="flex h-full w-full items-center justify-center px-6">
+    <div className="absolute inset-0 flex items-center justify-center px-6">
       <div className="flex max-w-md flex-col items-center gap-4 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-bg-elevated">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-bg-surface/80">
           <Lock className="h-8 w-8 text-text-muted" />
         </div>
         <h1 className="text-xl font-semibold tracking-tight text-text-primary">

@@ -234,7 +234,7 @@ function CollaborativeFlow() {
   return (
     <div
       ref={wrapperRef}
-      className="relative h-full w-full"
+      className="absolute inset-0"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
@@ -249,7 +249,7 @@ function CollaborativeFlow() {
         fitView
         connectionMode={ConnectionMode.Loose}
         proOptions={{ hideAttribution: true }}
-        className="bg-bg-base"
+        className="!bg-transparent"
       >
         <Background
           variant={BackgroundVariant.Dots}
@@ -260,7 +260,7 @@ function CollaborativeFlow() {
         <MiniMap
           pannable
           zoomable
-          className="!bg-bg-surface !border !border-border-default !rounded-xl"
+          className="!bg-bg-surface/80 !border !border-border-default !rounded-xl !shadow-lg"
           nodeColor="var(--text-muted)"
           maskColor="rgba(8, 8, 9, 0.7)"
         />

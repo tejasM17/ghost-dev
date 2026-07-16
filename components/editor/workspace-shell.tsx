@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { UserButton } from "@clerk/nextjs";
-import { PanelLeftClose, PanelLeftOpen, Share2, MessageSquare, X } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Share2, X, Network, Sparkles, Bot } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -55,7 +55,7 @@ export function WorkspaceShell({
           onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
           onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
           aiSidebarOpen={isAiSidebarOpen}
-          onShareClick={() => {}}
+          onShareClick={() => { }}
         />
         <main className="relative flex-1 overflow-hidden">
           <ProjectSidebar
@@ -86,6 +86,9 @@ export function WorkspaceShell({
         onShareClick={shareDialog.onOpenChange}
       />
       <main className="relative flex-1 overflow-hidden">
+        <div className="absolute inset-0">
+          <Canvas roomId={currentRoomId} />
+        </div>
         <ProjectSidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
@@ -93,7 +96,6 @@ export function WorkspaceShell({
           sharedProjects={sharedProjects}
           currentRoomId={currentRoomId}
         />
-        <Canvas roomId={currentRoomId} />
         <AiSidebar
           isOpen={isAiSidebarOpen}
           onClose={() => setIsAiSidebarOpen(false)}
@@ -153,13 +155,16 @@ function EditorNavbar({
             <PanelLeftOpen className="h-5 w-5" />
           )}
         </button>
-        {projectName ? (
-          <span className="text-sm font-medium text-text-primary">
-            {projectName}
-          </span>
-        ) : (
-          <span className="text-sm font-medium text-text-muted">Editor</span>
-        )}
+        <div className="flex flex-col">
+          {projectName ? (
+            <span className="text-sm font-semibold text-text-primary">
+              {projectName}
+            </span>
+          ) : (
+            <span className="text-sm font-semibold text-text-primary">Ghost Room</span>
+          )}
+          <span className="text-[11px] font-medium text-text-faint">Workspace</span>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <Button
@@ -169,7 +174,7 @@ function EditorNavbar({
           className="gap-2"
           onClick={() => onShareClick(true)}
         >
-          <Share2 className="h-4 w-4" />
+          <Network className="h-4 w-4" />
           Share
         </Button>
         <Button
@@ -177,23 +182,22 @@ function EditorNavbar({
           variant="ghost"
           size="sm"
           className={cn(
-            "gap-2",
-            aiSidebarOpen && "bg-bg-elevated text-text-primary",
+            "gap-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20",
+            aiSidebarOpen && "bg-accent-primary/20",
           )}
           onClick={onToggleAiSidebar}
         >
-          <MessageSquare className="h-4 w-4" />
-          AI Chat
+          <Sparkles className="h-4 w-4" />
+          AI
         </Button>
-      </div>
-      <div className="flex items-center">
         <UserButton
           appearance={{
             elements: {
               userButtonBox: "h-9 w-9",
               userButtonTrigger:
-                "h-9 w-9 rounded-xl ring-1 ring-border-default hover:ring-border-subtle transition",
-              userButtonAvatarBox: "h-9 w-9 rounded-xl",
+                "h-9 w-9 rounded-full ring-1 ring-border-default hover:ring-border-subtle transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent-primary/50",
+              userButtonAvatarBox: "h-full w-full rounded-full",
+              userButtonAvatarImage: "h-full w-full object-cover",
             },
           }}
         />
@@ -236,8 +240,8 @@ function ProjectSidebar({
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "pointer-events-none fixed left-0 top-0 z-40 flex h-full w-80 flex-col border-r border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full",
+          "pointer-events-none fixed left-0 top-14 z-40 flex h-[calc(100vh-3.5rem)] w-80 flex-col border-r border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
+          isOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-[101%]",
         )}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4">
@@ -298,7 +302,7 @@ function ProjectSidebar({
             className="w-full"
             size="default"
             // Create project not wired yet
-            onClick={() => {}}
+            onClick={() => { }}
           >
             <Share2 className="h-4 w-4" />
             New Project
@@ -373,7 +377,10 @@ interface AiSidebarProps {
 }
 
 /**
- * Right sidebar placeholder for future AI chat.
+ * Right sidebar for the AI Copilot. The toggle is wired (the AI button
+ * in the navbar controls visibility), but the actual chat surface and
+ * generation are intentionally out of scope here — this panel currently
+ * shows the placeholder status and the future hooks that will attach.
  */
 function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
   return (
@@ -395,23 +402,65 @@ function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "pointer-events-none fixed right-0 top-0 z-40 flex h-full w-80 flex-col border-l border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
+          "pointer-events-none fixed right-0 top-14 z-40 flex h-[calc(100vh-3.5rem)] w-80 flex-col border-l border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full",
         )}
       >
+        {/* Header */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4">
-          <h2 className="text-sm font-semibold text-text-primary">AI Chat</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close AI chat"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-subtle"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-text-primary">
+              AI Copilot
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-accent-ai-text" />
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close AI chat"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-subtle"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-text-muted">AI chat coming soon</p>
+
+        {/* Subtitle */}
+        <div className="border-b border-border-default px-4 pb-3 pt-2">
+          <p className="text-xs text-text-muted">Placeholder panel</p>
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+          {/* Status card */}
+          <div className="rounded-2xl border border-border-default bg-bg-elevated p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-bg-subtle">
+                <Bot className="h-4 w-4 text-accent-ai-text" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Chat surface pending
+                </h3>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  The toggle is wired. Messaging and generation are
+                  intentionally out of scope here.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Future hooks card */}
+          <div className="rounded-2xl border border-dashed border-border-default bg-bg-elevated/50 p-4">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-faint">
+              Future Hooks
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-text-muted">
+              Prompt composer, run status, and architecture guidance will
+              attach to this sidebar.
+            </p>
+          </div>
         </div>
       </aside>
     </>

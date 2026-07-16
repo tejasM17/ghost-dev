@@ -4,7 +4,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Feature 11 — TBD
+- Feature 12 — (compleated)
 
 ## Current Goal
 
