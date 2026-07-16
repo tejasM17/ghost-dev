@@ -29,8 +29,9 @@ const MIN_NODE_HEIGHT = 40;
 
 const LABEL_PLACEHOLDER = "Label";
 
+/** Small white dots with a dark border — hidden until the node is hovered. */
 const HANDLE_CLASS =
-  "!h-2 !w-2 !rounded-full !border !border-border-default !bg-white";
+  "!h-2 !w-2 !rounded-full !border !border-border-default !bg-white !opacity-0 !transition-opacity !duration-150 group-hover:!opacity-100";
 
 /**
  * Font size scales with node dimensions and shrinks when there is more
@@ -148,7 +149,7 @@ function CanvasNodeComponent({
 
   return (
     <div
-      className="relative"
+      className="group relative"
       style={{ width: nodeWidth, height: nodeHeight }}
       onDoubleClick={isEditing ? undefined : startEditing}
     >

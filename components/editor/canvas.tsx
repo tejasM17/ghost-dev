@@ -15,12 +15,13 @@ import {
   Background,
   BackgroundVariant,
   ConnectionMode,
+  MarkerType,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  applyNodeChanges,
-  type Node,
+  type DefaultEdgeOptions,
+  type EdgeTypes,
   type NodeTypes,
   type NodeChange,
 } from "@xyflow/react";
@@ -37,13 +38,32 @@ import "@liveblocks/react-flow/styles.css";
 import type {
   CanvasEdge,
   CanvasNode,
-  CanvasNodeData,
   NodeColorName,
   NodeShape,
 } from "@/types/canvas";
 import { NODE_COLORS } from "@/types/canvas";
 import { ShapePanel, type ShapeDragPayload } from "./shape-panel";
 import { CanvasNodeRenderer } from "./canvas-node";
+import { CanvasEdgeRenderer } from "./canvas-edge";
+
+/** Default style for newly created edges — light stroke, rounded ends, arrow. */
+const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
+  type: "canvasEdge",
+  style: {
+    stroke: "#f8fafc",
+    strokeWidth: 1.5,
+    strokeLinecap: "round",
+  },
+  markerEnd: {
+    type: MarkerType.ArrowClosed,
+    width: 16,
+    height: 16,
+    color: "#f8fafc",
+  },
+  data: {
+    label: "",
+  },
+};
 
 interface CanvasProps {
   roomId: string;
@@ -167,10 +187,17 @@ function CollaborativeFlow() {
     [lbOnNodesChange],
   );
 
-  // Memoized node types for the custom canvas node renderer
+  // Memoized type maps — stable refs so React Flow does not remount nodes/edges
   const nodeTypes = useMemo<NodeTypes>(
     () => ({
       canvasNode: CanvasNodeRenderer,
+    }),
+    [],
+  );
+
+  const edgeTypes = useMemo<EdgeTypes>(
+    () => ({
+      canvasEdge: CanvasEdgeRenderer,
     }),
     [],
   );
@@ -246,6 +273,8 @@ function CollaborativeFlow() {
         onConnect={onConnect}
         onDelete={onDelete}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
         fitView
         connectionMode={ConnectionMode.Loose}
         proOptions={{ hideAttribution: true }}
