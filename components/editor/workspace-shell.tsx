@@ -57,20 +57,21 @@ export function WorkspaceShell({
           aiSidebarOpen={isAiSidebarOpen}
           onShareClick={() => {}}
         />
-        <main className="relative flex-1 overflow-hidden">
-          <ProjectSidebar
-            isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            ownedProjects={ownedProjects}
-            sharedProjects={sharedProjects}
-            currentRoomId={currentRoomId}
-          />
+        {/* Canvas area with access denied message */}
+        <div className="fixed inset-0 top-14">
           <AccessDenied />
-          <AiSidebar
-            isOpen={isAiSidebarOpen}
-            onClose={() => setIsAiSidebarOpen(false)}
-          />
-        </main>
+        </div>
+        <ProjectSidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          ownedProjects={ownedProjects}
+          sharedProjects={sharedProjects}
+          currentRoomId={currentRoomId}
+        />
+        <AiSidebar
+          isOpen={isAiSidebarOpen}
+          onClose={() => setIsAiSidebarOpen(false)}
+        />
       </div>
     );
   }
@@ -85,20 +86,22 @@ export function WorkspaceShell({
         aiSidebarOpen={isAiSidebarOpen}
         onShareClick={shareDialog.onOpenChange}
       />
-      <main className="relative flex-1 overflow-hidden">
-        <ProjectSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          ownedProjects={ownedProjects}
-          sharedProjects={sharedProjects}
-          currentRoomId={currentRoomId}
-        />
+      {/* Canvas fills full viewport - sidebars float over it */}
+      <div className="fixed inset-0 top-14">
         <Canvas roomId={currentRoomId} />
-        <AiSidebar
-          isOpen={isAiSidebarOpen}
-          onClose={() => setIsAiSidebarOpen(false)}
-        />
-      </main>
+      </div>
+      {/* Sidebars rendered outside canvas container so they float over it */}
+      <ProjectSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        ownedProjects={ownedProjects}
+        sharedProjects={sharedProjects}
+        currentRoomId={currentRoomId}
+      />
+      <AiSidebar
+        isOpen={isAiSidebarOpen}
+        onClose={() => setIsAiSidebarOpen(false)}
+      />
 
       {/* Share Dialog */}
       <ShareDialog
@@ -227,7 +230,7 @@ function ProjectSidebar({
         onClick={onClose}
         aria-label="Close projects sidebar"
         className={cn(
-          "fixed inset-0 z-30 bg-bg-base/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out md:hidden",
+          "fixed inset-0 z-40 bg-bg-base/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out md:hidden",
           isOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0",
@@ -236,8 +239,8 @@ function ProjectSidebar({
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "pointer-events-none fixed left-0 top-0 z-40 flex h-full w-80 flex-col border-r border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full",
+          "pointer-events-none fixed left-0 top-14 z-50 flex h-full w-80 flex-col border-r border-border-default bg-bg-surface/90 shadow-xl backdrop-blur-md transition-transform duration-300 ease-in-out",
+          isOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-[100%]",
         )}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4">
@@ -386,7 +389,7 @@ function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
         onClick={onClose}
         aria-label="Close AI chat"
         className={cn(
-          "fixed inset-0 z-30 bg-bg-base/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out md:hidden",
+          "fixed inset-0 z-40 bg-bg-base/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out md:hidden",
           isOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0",
@@ -395,7 +398,7 @@ function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "pointer-events-none fixed right-0 top-0 z-40 flex h-full w-80 flex-col border-l border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
+          "pointer-events-none fixed right-0 top-14 z-50 flex h-full w-80 flex-col border-l border-border-default bg-bg-surface/90 shadow-xl backdrop-blur-md transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full",
         )}
       >
