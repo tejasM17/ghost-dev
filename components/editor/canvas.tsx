@@ -2,8 +2,12 @@
 
 import {
   Component,
+  useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
+  type DragEvent,
   type ErrorInfo,
   type ReactNode,
 } from "react";
@@ -13,6 +17,12 @@ import {
   ConnectionMode,
   MiniMap,
   ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  applyNodeChanges,
+  type Node,
+  type NodeTypes,
+  type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -27,7 +37,13 @@ import "@liveblocks/react-flow/styles.css";
 import type {
   CanvasEdge,
   CanvasNode,
+  CanvasNodeData,
+  NodeColorName,
+  NodeShape,
 } from "@/types/canvas";
+import { NODE_COLORS } from "@/types/canvas";
+import { ShapePanel, type ShapeDragPayload } from "./shape-panel";
+import { CanvasNodeRenderer } from "./canvas-node";
 
 interface CanvasProps {
   roomId: string;
@@ -50,7 +66,9 @@ export function Canvas({ roomId }: CanvasProps) {
       >
         <CanvasErrorBoundary>
           <ClientSideSuspense fallback={<CanvasLoading />}>
-            <CollaborativeFlow />
+            <ReactFlowProvider>
+              <CollaborativeFlow />
+            </ReactFlowProvider>
           </ClientSideSuspense>
         </CanvasErrorBoundary>
       </RoomProvider>
@@ -104,47 +122,153 @@ class CanvasErrorBoundary extends Component<
 }
 
 /**
+ * Counter for generating unique node IDs.
+ */
+let nodeIdCounter = 0;
+
+/**
+ * Generate a unique node ID using the shape name, timestamp, and a counter.
+ */
+function generateNodeId(shape: NodeShape): string {
+  const timestamp = Date.now();
+  nodeIdCounter += 1;
+  return `${shape}-${timestamp}-${nodeIdCounter}`;
+}
+
+/**
  * The actual React Flow surface, rendered after Liveblocks has connected
  * and the storage layer is ready (via Suspense).
  */
 function CollaborativeFlow() {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const { screenToFlowPosition } = useReactFlow();
+
   // `useLiveblocksFlow` returns the synced nodes/edges plus change
   // handlers. With `suspense: true`, `nodes` and `edges` are guaranteed
   // to be defined here.
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
-    useLiveblocksFlow<CanvasNode, CanvasEdge>({
-      suspense: true,
-      nodes: { initial: [] },
-      edges: { initial: [] },
-    });
+  const {
+    nodes,
+    edges,
+    onNodesChange: lbOnNodesChange,
+    onEdgesChange,
+    onConnect,
+    onDelete,
+  } = useLiveblocksFlow<CanvasNode, CanvasEdge>({
+    suspense: true,
+    nodes: { initial: [] },
+    edges: { initial: [] },
+  });
+
+  // Wrap Liveblocks' onNodesChange to also apply locally for instant feedback
+  const onNodesChange = useCallback(
+    (changes: NodeChange<CanvasNode>[]) => {
+      lbOnNodesChange(changes);
+    },
+    [lbOnNodesChange],
+  );
+
+  // Memoized node types for the custom canvas node renderer
+  const nodeTypes = useMemo<NodeTypes>(
+    () => ({
+      canvasNode: CanvasNodeRenderer,
+    }),
+    [],
+  );
+
+  // Handle drag over to allow dropping
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  // Handle drop to create a new node
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+
+      // Read the shape payload from data transfer
+      const payloadData = e.dataTransfer.getData("application/json");
+      if (!payloadData) return;
+
+      let payload: ShapeDragPayload;
+      try {
+        payload = JSON.parse(payloadData);
+      } catch {
+        return;
+      }
+
+      // Get the drop position in flow coordinates
+      const position = screenToFlowPosition({
+        x: e.clientX,
+        y: e.clientY,
+      });
+
+      // Default to the first color in the palette
+      const defaultColor: NodeColorName = NODE_COLORS[0].name;
+
+      // Create the new node
+      const newNode: CanvasNode = {
+        id: generateNodeId(payload.shape),
+        type: "canvasNode",
+        position,
+        data: {
+          label: "",
+          color: defaultColor,
+          shape: payload.shape,
+        },
+        width: payload.width,
+        height: payload.height,
+      };
+
+      // Add the node to the collaborative canvas using Liveblocks storage
+      onNodesChange([
+        {
+          type: "add",
+          item: newNode,
+        },
+      ]);
+    },
+    [screenToFlowPosition, onNodesChange],
+  );
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      onDelete={onDelete}
-      fitView
-      connectionMode={ConnectionMode.Loose}
-      proOptions={{ hideAttribution: true }}
-      className="bg-bg-base"
+    <div
+      ref={wrapperRef}
+      className="relative h-full w-full"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
-      <Background
-        variant={BackgroundVariant.Dots}
-        gap={18}
-        size={1}
-        color="var(--border-subtle)"
-      />
-      <MiniMap
-        pannable
-        zoomable
-        className="!bg-bg-surface !border !border-border-default !rounded-xl"
-        nodeColor="var(--text-muted)"
-        maskColor="rgba(8, 8, 9, 0.7)"
-      />
-    </ReactFlow>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onDelete={onDelete}
+        nodeTypes={nodeTypes}
+        fitView
+        connectionMode={ConnectionMode.Loose}
+        proOptions={{ hideAttribution: true }}
+        className="bg-bg-base"
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={18}
+          size={1}
+          color="var(--border-subtle)"
+        />
+        <MiniMap
+          pannable
+          zoomable
+          className="!bg-bg-surface !border !border-border-default !rounded-xl"
+          nodeColor="var(--text-muted)"
+          maskColor="rgba(8, 8, 9, 0.7)"
+        />
+      </ReactFlow>
+
+      {/* Shape panel for dragging shapes onto the canvas */}
+      <ShapePanel />
+    </div>
   );
 }
 

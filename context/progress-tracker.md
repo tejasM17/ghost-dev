@@ -4,7 +4,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Feature 11 (Base canvas) — completed
+- Feature 11 — TBD
 
 ## Current Goal
 
@@ -23,6 +23,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - feature 09: Share dialog — Added Share button to the editor navbar that opens the share dialog. Created `app/api/projects/[projectId]/collaborators/route.ts` for listing and inviting collaborators, and `app/api/projects/[projectId]/collaborators/[collaboratorId]/route.ts` for removing collaborators. Both enforce ownership server-side for invite and remove actions. Created `lib/auth.ts` helpers `getClerkUserByEmail()` and `getClerkUsersByEmails()` to enrich collaborator emails with display name and avatar from Clerk (falls back to showing email only when user not found). Created `components/editor/share-dialog.tsx` with the share dialog UI that shows project link (copyable with "Copied!" feedback), invite form (owners only), collaborator list (shows avatar + name when available from Clerk, email otherwise), and remove button (owners only). Created `hooks/use-share-dialog.ts` to manage share dialog state and API interactions. Updated `components/editor/workspace-shell.tsx` to include the share dialog and wire the Share button. Updated `app/editor/[roomId]/page.tsx` to pass `ownerId` to determine owner vs collaborator view. `npm run build` passes; no new lint errors.
 - feature 10: Liveblocks setup — `liveblocks.config.ts` types the required presence and user metadata. `lib/liveblocks.ts` provides a cached node client and deterministic user-color helper. `POST /api/liveblocks-auth` requires Clerk authentication, accepts Liveblocks’ `{ room }` auth payload (the project ID), verifies project access through `lib/project-access`, creates a private room with per-user write access, and returns an ID-token session with name, avatar, and cursor color. `npm run build` passes.
 - feature 11: Base canvas — `types/canvas.ts` defines the shared canvas node and edge types. `components/editor/canvas.tsx` sets up `LiveblocksProvider`, `RoomProvider`, initial presence, error and suspense loading fallbacks, then passes `useLiveblocksFlow`’s synced state and handlers into a basic React Flow canvas with loose connections, fit view, MiniMap, and dot background. It intentionally contains no custom node or edge rendering, persistence, controls, or AI behavior. `workspace-shell.tsx` renders the canvas for the active project. `npm run build` passes.
+- feature 12: Shape panel — Added a floating pill-shaped toolbar at the bottom-center of the canvas with draggable icon buttons for rectangle, diamond, circle, pill, cylinder, and hexagon. Drag payloads include the shape name and default sizes (rectangles wider, circles square, diamonds larger for labels). Added `dragover` and `drop` handlers to the canvas wrapper that read the payload, convert screen position to canvas coordinates using `screenToFlowPosition`, and create new nodes at that position with empty label, default color, and the dragged shape. Node IDs are generated using the shape name, timestamp, and a counter. Created `CanvasNodeRenderer` component to render nodes as bordered rectangles with centered labels (shape-specific visuals to be added later). `npm run build` passes.
 
 ## In Progress
 
@@ -30,7 +31,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- feature 12: TBD
+- feature 13: TBD
 
 ## Open Questions
 
