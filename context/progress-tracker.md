@@ -4,7 +4,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Feature 14 — (completed)
+- Feature 15 — (completed)
 
 ## Current Goal
 
@@ -26,6 +26,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - feature 12: Shape panel — Added a floating pill-shaped toolbar at the bottom-center of the canvas with draggable icon buttons for rectangle, diamond, circle, pill, cylinder, and hexagon. Drag payloads include the shape name and default sizes (rectangles wider, circles square, diamonds larger for labels). Added `dragover` and `drop` handlers to the canvas wrapper that read the payload, convert screen position to canvas coordinates using `screenToFlowPosition`, and create new nodes at that position with empty label, default color, and the dragged shape. Node IDs are generated using the shape name, timestamp, and a counter. Created `CanvasNodeRenderer` component to render nodes as bordered rectangles with centered labels (shape-specific visuals to be added later). `npm run build` passes.
 - feature 13: Node shape rendering — Replaced the placeholder `CanvasNodeRenderer` with proper per-shape visuals via shared `NodeShapeVisual` (`components/editor/node-shape-visual.tsx`). CSS shapes: rectangle (rounded-lg), pill (full radius), circle (full radius). SVG shapes: diamond, hexagon, and cylinder, all scaling with node width/height. Borders use a muted text-color alpha at rest and the full palette text color when the node is selected. Shape panel drag shows a cursor-attached ghost preview (same shape + default size, semi-transparent) that clears on drop or drag cancel; browser default drag image is suppressed. Drop/create logic and panel layout unchanged; still driven by Liveblocks collaborative state. `npm run build` passes.
 - feature 14: Node editing — Selected nodes show React Flow `NodeResizer` handles (min 80×40, subtle dark-canvas styling). Double-click opens centered inline label editing via an overlaid `textarea` (`nodrag` / `nopan` / `nowheel` so text interaction does not drag or pan). Label updates as the user types through `useReactFlow().updateNodeData`, which emits replace changes into Liveblocks via the existing `onNodesChange` path. Editing closes on blur or Escape. Empty labels show a centered muted "Label" placeholder (nodes only; drag ghosts stay blank). All four sides expose connectable `Handle`s (top/right/bottom/left). Shape rendering geometry, shape panel, and drop-create logic unchanged. `npm run build` passes.
+- feature 15: Node color toolbar — Selected nodes show a floating color toolbar above the node (`NodeColorToolbar` in `components/editor/node-color-toolbar.tsx`) with one swatch per `NODE_COLORS` pair from `types/canvas.ts` (8 predefined fill/text pairs from `ui-context.md`). Active swatch is ringed with its text color; hover applies a tight glow from the pair's text color. Swatch click calls `updateNodeData(id, { color })` so both background and text update immediately through Liveblocks collaborative state (no server calls). Toolbar uses `nodrag`/`nopan`/`nowheel` plus pointer stopPropagation so interactions do not drag nodes or pan the canvas. Label font size scales with node dimensions and text length (`computeLabelFontSize`); resize handles enlarged (14×14 corners, thicker edge lines) for easier grab. Scope limited to predefined palette only — no full color picker, no drag/drop or selection rebuild. `npm run build` passes.
 
 ## In Progress
 
@@ -33,7 +34,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- feature 15: TBD
+- feature 16: TBD
 
 ## Open Questions
 
@@ -50,6 +51,7 @@ Update this file whenever the current phase, active feature, or implementation s
 ## Session Notes
 
 - Add context needed to resume work in the next session.
+- 2026-07-16: feature 15 implemented exactly per spec. Color toolbar floats above selected nodes only; 8 swatches from existing `NODE_COLORS` (fill + paired text). Color change is client-only via `updateNodeData` into Liveblocks. Also addressed spec issues: dynamic label font scaling with node size/text amount, and more accessible NodeResizer hit targets. Drag/drop and selection logic untouched; no freeform color picker.
 - 2026-07-16: feature 14 implemented exactly per spec. Resize via `NodeResizer` (visible only when selected, min size enforced). Label edit via double-click → centered textarea overlay; live `updateNodeData` writes through Liveblocks; close on blur/Escape; `nodrag`/`nopan` block canvas interaction while typing. Four side handles for connections. Scope limited to resize + label editing (no shape panel / drop / geometry changes).
 - 2026-07-16: feature 13 implemented exactly per spec. Shared visual component powers both nodes and the drag ghost so preview matches drop. Scope limited to shape rendering + drag preview only (no resize, label editing, or drop-logic changes).
 

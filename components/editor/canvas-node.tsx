@@ -18,9 +18,10 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 
-import type { CanvasNode } from "@/types/canvas";
+import type { CanvasNode, NodeColorName } from "@/types/canvas";
 import { NODE_COLORS } from "@/types/canvas";
 import { NodeShapeVisual } from "./node-shape-visual";
+import { NodeColorToolbar } from "./node-color-toolbar";
 
 /** Minimum node size — prevents nodes from collapsing to unusable dimensions. */
 const MIN_NODE_WIDTH = 80;
@@ -32,9 +33,36 @@ const HANDLE_CLASS =
   "!h-2 !w-2 !rounded-full !border !border-border-default !bg-white";
 
 /**
+ * Font size scales with node dimensions and shrinks when there is more
+ * text so longer labels still fit without overflowing awkwardly.
+ */
+function computeLabelFontSize(
+  width: number,
+  height: number,
+  text: string,
+): number {
+  const minDim = Math.min(width, height);
+  // Base size tracks the smaller edge of the node.
+  const base = Math.max(10, Math.min(22, minDim * 0.2));
+
+  const charCount = Math.max(text.trim().length || 1, 1);
+  // Approximate characters per line from usable width.
+  const charsPerLine = Math.max(4, Math.floor((width * 0.75) / (base * 0.55)));
+  const estimatedLines = Math.max(1, Math.ceil(charCount / charsPerLine));
+
+  // Cap by available height for the estimated line count.
+  const maxByHeight = (height * 0.72) / estimatedLines;
+  // Cap by width for dense single-line content.
+  const maxByWidth = (width * 0.85) / Math.min(charCount, charsPerLine) / 0.55;
+
+  const size = Math.min(base, maxByHeight, maxByWidth);
+  return Math.round(Math.max(10, Math.min(22, size)) * 10) / 10;
+}
+
+/**
  * Custom React Flow node: per-shape visuals, resize handles when selected,
- * four connectable points, and double-click inline label editing.
- * All dimension and label updates flow through the collaborative node state.
+ * color toolbar, four connectable points, and double-click inline label editing.
+ * All dimension, color, and label updates flow through the collaborative node state.
  */
 function CanvasNodeComponent({
   id,
@@ -54,6 +82,8 @@ function CanvasNodeComponent({
 
   const nodeWidth = width ?? 160;
   const nodeHeight = height ?? 80;
+
+  const fontSize = computeLabelFontSize(nodeWidth, nodeHeight, label);
 
   // Subtle border at rest; brighter when selected
   const borderColor = selected
@@ -80,6 +110,13 @@ function CanvasNodeComponent({
   const handleLabelChange = useCallback(
     (value: string) => {
       updateNodeData(id, { label: value });
+    },
+    [id, updateNodeData],
+  );
+
+  const handleColorSelect = useCallback(
+    (color: NodeColorName) => {
+      updateNodeData(id, { color });
     },
     [id, updateNodeData],
   );
@@ -115,13 +152,23 @@ function CanvasNodeComponent({
       style={{ width: nodeWidth, height: nodeHeight }}
       onDoubleClick={isEditing ? undefined : startEditing}
     >
+      {selected && (
+        <NodeColorToolbar
+          activeColor={colorPair.name}
+          onSelect={handleColorSelect}
+        />
+      )}
+
       <NodeResizer
         isVisible={selected}
         minWidth={MIN_NODE_WIDTH}
         minHeight={MIN_NODE_HEIGHT}
         color="var(--border-subtle)"
-        lineClassName="!border-border-subtle/80"
-        handleClassName="!h-1.5 !w-1.5 !rounded-[1px] !border !border-border-subtle !bg-bg-elevated"
+        // Thicker edge lines + larger corner grips so resize is easy to grab
+        lineClassName="!border-border-subtle/70"
+        lineStyle={{ borderWidth: 2 }}
+        handleClassName="!rounded-sm !border-2 !border-border-subtle !bg-bg-elevated !opacity-95"
+        handleStyle={{ width: 14, height: 14 }}
       />
 
       {/* Four connectable points — one per side */}
@@ -159,6 +206,7 @@ function CanvasNodeComponent({
         label={isEditing ? "" : label}
         width={nodeWidth}
         height={nodeHeight}
+        fontSize={fontSize}
         emptyPlaceholder={LABEL_PLACEHOLDER}
       />
 
@@ -171,9 +219,10 @@ function CanvasNodeComponent({
         >
           <textarea
             ref={textareaRef}
-            className="nodrag nopan nowheel max-h-full w-full resize-none overflow-hidden border-0 bg-transparent text-center text-sm font-medium outline-none placeholder:opacity-40"
+            className="nodrag nopan nowheel max-h-full w-full resize-none overflow-hidden border-0 bg-transparent text-center font-medium outline-none placeholder:opacity-40"
             style={{
               color: colorPair.text,
+              fontSize,
               // Grow with content so multi-line text stays visually centered
               fieldSizing: "content",
             }}

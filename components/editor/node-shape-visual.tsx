@@ -10,6 +10,11 @@ interface NodeShapeVisualProps {
   label: string;
   width: number;
   height: number;
+  /**
+   * Label font size in px. When omitted, falls back to the default `text-sm`
+   * size so drag ghosts and callers without dynamic sizing still look fine.
+   */
+  fontSize?: number;
   /** When true, used as a floating drag ghost (no interaction styles). */
   ghost?: boolean;
   /**
@@ -32,6 +37,7 @@ export function NodeShapeVisual({
   label,
   width,
   height,
+  fontSize,
   ghost = false,
   emptyPlaceholder,
 }: NodeShapeVisualProps) {
@@ -42,8 +48,15 @@ export function NodeShapeVisual({
 
   const labelEl = displayText ? (
     <span
-      className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-2 text-center text-sm font-medium"
-      style={{ color: textColor, opacity: isPlaceholder ? 0.4 : 1 }}
+      className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-2 text-center font-medium leading-snug"
+      style={{
+        color: textColor,
+        opacity: isPlaceholder ? 0.4 : 1,
+        fontSize: fontSize ?? 14,
+        // Soft wrap so long labels reflow inside the node
+        overflowWrap: "anywhere",
+        wordBreak: "break-word",
+      }}
     >
       {displayText}
     </span>
