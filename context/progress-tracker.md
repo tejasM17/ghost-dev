@@ -70,6 +70,15 @@ Keep this file short. Read feature specs + code for detail.
 - Canvas types stay shared: `types/canvas.ts`
 - Do not invent features — follow `context/feature-specs/*` and user context
 
+## Bugfixes (Liveblocks canvas issues 2–8)
+
+- Delete/Backspace: use Liveblocks `onDelete` (not `type: "remove"` changes — those are no-ops in `@liveblocks/react-flow`); RF `deleteKeyCode={null}`
+- Drop places node centered on cursor; removed React Flow `fitView` auto-zoom on first drop
+- Connection handles stacked above shape with z-index; visible when selected
+- `img.clerk.com` in `next.config.js` `images.remotePatterns`
+- Workspace navbar had no UserButton already (UserButton on presence strip / editor home only)
+- Create project dialog UI polish (`create-project-dialog.tsx`)
+
 ## Open
 
 - None

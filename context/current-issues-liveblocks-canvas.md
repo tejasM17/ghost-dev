@@ -44,6 +44,8 @@ Do not change anything else.
 
 ### 2. Delete Nodes and Edges
 
+**Status: fixed (use onDelete; remove changes are no-ops in liveblocks react-flow)**
+
 Read Liveblocks agent skills before implementing this.
 Then read the canvas wrapper component and the existing
 node and edge mutation helpers.
@@ -71,6 +73,8 @@ Do not change anything else.
 
 ### 3. Node Connection Handles
 
+**Status: fixed**
+
 Read Liveblocks agent skills before implementing this.
 
 Nodes can only be connected from the top handle. All four
@@ -83,6 +87,8 @@ two nodes should work and sync through the existing
 Liveblocks edge state.
 
 ### 4. Drag and Drop Position Offset
+
+**Status: fixed**
 
 Read Liveblocks agent skills before implementing this.
 
@@ -104,6 +110,8 @@ position on drop.
 
 ### 5. Auto Zoom on First Node Drop
 
+**Status: fixed**
+
 Read Liveblocks agent skills before implementing this.
 
 Dropping the first node onto a fully empty canvas causes an
@@ -116,6 +124,8 @@ exactly where the user left it after dropping a node.
 
 ### 6. Collaborator Avatar Image Error
 
+**Status: fixed**
+
 Check Clerk agent skills before implementing this.
 
 Add img.clerk.com to the allowed image hostnames in
@@ -124,6 +134,8 @@ configuration.
 
 ### 7. Remove UserButton from Workspace Navbar
 
+**Status: already fixed (left as-is)**
+
 Check Clerk agent skills before implementing this.
 
 Remove the UserButton from the workspace navbar only. The
@@ -131,6 +143,14 @@ navbar is shared so make sure the UserButton remains on the
 editor home navbar. Conditionally render it based on whether
 the component is being used in the workspace context or the
 editor home context.
+
+### 8. UI Update
+
+**Status: fixed**
+
+check at `feature-specs/iamge/image-2.png`
+
+only improve the ui when creating the new project.
 
 ## Scope
 

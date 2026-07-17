@@ -29,9 +29,12 @@ const MIN_NODE_HEIGHT = 40;
 
 const LABEL_PLACEHOLDER = "Label";
 
-/** Small white dots with a dark border — hidden until the node is hovered. */
+/**
+ * Connectable points — sit above the shape (z-20) so side/bottom handles
+ * are not covered by the visual or NodeResizer. Hidden until hover/select.
+ */
 const HANDLE_CLASS =
-  "!h-2 !w-2 !rounded-full !border !border-border-default !bg-white !opacity-0 !transition-opacity !duration-150 group-hover:!opacity-100";
+  "!z-20 !h-2.5 !w-2.5 !rounded-full !border !border-border-default !bg-white !opacity-0 !transition-opacity !duration-150 group-hover:!opacity-100 group-focus-within:!opacity-100";
 
 /**
  * Font size scales with node dimensions and shrinks when there is more
@@ -147,6 +150,10 @@ function CanvasNodeComponent({
     e.stopPropagation();
   }, []);
 
+  const handleVisibilityClass = selected
+    ? `${HANDLE_CLASS} !opacity-100`
+    : HANDLE_CLASS;
+
   return (
     <div
       className="group relative"
@@ -172,32 +179,6 @@ function CanvasNodeComponent({
         handleStyle={{ width: 14, height: 14 }}
       />
 
-      {/* Four connectable points — one per side */}
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top"
-        className={HANDLE_CLASS}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        className={HANDLE_CLASS}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        className={HANDLE_CLASS}
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left"
-        className={HANDLE_CLASS}
-      />
-
       <NodeShapeVisual
         shape={shape}
         fill={colorPair.fill}
@@ -209,6 +190,40 @@ function CanvasNodeComponent({
         height={nodeHeight}
         fontSize={fontSize}
         emptyPlaceholder={LABEL_PLACEHOLDER}
+      />
+
+      {/*
+        Four connectable points after the shape so they stack above the
+        visual. ConnectionMode.Loose treats sources as valid targets, so
+        every side can start or end a connection.
+      */}
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        isConnectable
+        className={handleVisibilityClass}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        isConnectable
+        className={handleVisibilityClass}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        isConnectable
+        className={handleVisibilityClass}
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        isConnectable
+        className={handleVisibilityClass}
       />
 
       {isEditing && (

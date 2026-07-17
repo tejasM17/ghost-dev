@@ -18,6 +18,8 @@ import {
   MarkerType,
   ReactFlow,
   ReactFlowProvider,
+  useEdges,
+  useNodes,
   useReactFlow,
   type DefaultEdgeOptions,
   type EdgeTypes,
@@ -198,6 +200,23 @@ interface CollaborativeFlowProps {
  * The actual React Flow surface, rendered after Liveblocks has connected
  * and the storage layer is ready (via Suspense).
  */
+/**
+ * True when focus is in an editable field so Delete/Backspace should
+ * type/delete text instead of removing canvas elements.
+ */
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+    return true;
+  }
+  if (target.isContentEditable) return true;
+  if (target.closest("[contenteditable='true'], [contenteditable='']")) {
+    return true;
+  }
+  return false;
+}
+
 function CollaborativeFlow({
   projectId,
   templatesOpen,
@@ -207,6 +226,8 @@ function CollaborativeFlow({
 }: CollaborativeFlowProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
+  const selectedNodes = useNodes<CanvasNode>();
+  const selectedEdges = useEdges<CanvasEdge>();
   const { onPointerMove: onCursorMove, onPointerLeave: onCursorLeave } =
     useCursorPresence();
 
@@ -233,6 +254,52 @@ function CollaborativeFlow({
     },
     [lbOnNodesChange],
   );
+
+  /**
+   * Delete / Backspace removes selected nodes and edges through Liveblocks
+   * storage (not React Flow's built-in deleteKeyCode), so all clients sync.
+   *
+   * Important: `@liveblocks/react-flow` intentionally no-ops `type: "remove"`
+   * in onNodesChange/onEdgesChange. Actual deletion must go through `onDelete`.
+   */
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      if (isEditableTarget(event.target)) return;
+
+      const nodesToRemove = selectedNodes.filter((n) => n.selected);
+      const selectedToRemove = selectedEdges.filter((e) => e.selected);
+
+      if (nodesToRemove.length === 0 && selectedToRemove.length === 0) return;
+
+      event.preventDefault();
+
+      // Include edges attached to deleted nodes (same as React Flow's delete).
+      const removedNodeIds = new Set(nodesToRemove.map((n) => n.id));
+      const edgesById = new Map<string, CanvasEdge>();
+      for (const edge of selectedToRemove) {
+        edgesById.set(edge.id, edge);
+      }
+      for (const edge of edges) {
+        if (
+          removedNodeIds.has(edge.source) ||
+          removedNodeIds.has(edge.target)
+        ) {
+          edgesById.set(edge.id, edge);
+        }
+      }
+
+      onDelete({
+        nodes: nodesToRemove,
+        edges: Array.from(edgesById.values()),
+      });
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [selectedNodes, selectedEdges, edges, onDelete]);
 
   /**
    * Apply a full graph snapshot into collaborative storage (blob hydrate
@@ -358,11 +425,16 @@ function CollaborativeFlow({
         return;
       }
 
-      // Get the drop position in flow coordinates
-      const position = screenToFlowPosition({
+      // Cursor position in flow space, then offset so the node is centered
+      // on the cursor (matches the centered drag ghost in ShapePanel).
+      const cursorFlow = screenToFlowPosition({
         x: e.clientX,
         y: e.clientY,
       });
+      const position = {
+        x: cursorFlow.x - payload.width / 2,
+        y: cursorFlow.y - payload.height / 2,
+      };
 
       // Default to the first color in the palette
       const defaultColor: NodeColorName = NODE_COLORS[0].name;
@@ -411,7 +483,9 @@ function CollaborativeFlow({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-        fitView
+        // No automatic fitView — keeps viewport stable on first drop.
+        // Template import and blob hydrate call fitView explicitly.
+        deleteKeyCode={null}
         connectionMode={ConnectionMode.Loose}
         proOptions={{ hideAttribution: true }}
         className="!bg-transparent"
