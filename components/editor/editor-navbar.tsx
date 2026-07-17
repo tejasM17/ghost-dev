@@ -13,8 +13,8 @@ export function EditorNavbar({
   onToggleSidebar,
 }: EditorNavbarProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-bg-surface px-4">
-      <div className="flex items-center">
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 shrink-0 items-center justify-between px-3 pt-3">
+      <div className="pointer-events-auto flex items-center gap-1 rounded-2xl border border-border-default bg-bg-surface/95 px-1.5 py-1.5 shadow-xl backdrop-blur-md">
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -29,15 +29,15 @@ export function EditorNavbar({
           )}
         </button>
       </div>
-      <div className="flex items-center" />
-      <div className="flex items-center">
+      <div className="pointer-events-auto flex items-center rounded-2xl border border-border-default bg-bg-surface/95 px-1.5 py-1.5 shadow-xl backdrop-blur-md">
         <UserButton
           appearance={{
             elements: {
               userButtonBox: "h-9 w-9",
               userButtonTrigger:
-                "h-9 w-9 rounded-xl ring-1 ring-border-default hover:ring-border-subtle transition",
-              userButtonAvatarBox: "h-9 w-9 rounded-xl",
+                "h-9 w-9 rounded-full ring-2 ring-bg-base hover:ring-border-subtle transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent-primary/50",
+              userButtonAvatarBox: "h-full w-full rounded-full",
+              userButtonAvatarImage: "h-full w-full object-cover",
             },
           }}
         />

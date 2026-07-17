@@ -19,10 +19,9 @@ export const NODE_COLORS = [
 export type NodeColorName = (typeof NODE_COLORS)[number]["name"];
 
 /**
- * The 6 supported node shapes defined in `context/ui-context.md`. The
- * custom renderer (added in a later feature) is responsible for drawing
- * complex shapes — rectangle and pill are CSS-shaped, the rest are
- * inline SVGs.
+ * The 6 supported node shapes defined in `context/ui-context.md`.
+ * rectangle, pill, and circle use CSS styling; diamond, hexagon, and
+ * cylinder render as scaling inline SVGs.
  */
 export const NODE_SHAPES = [
   "rectangle",

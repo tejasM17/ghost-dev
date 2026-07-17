@@ -18,7 +18,8 @@ interface EditorShellProps {
 
 export function EditorShell({ initialOwned, initialShared }: EditorShellProps) {
   const router = useRouter();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Collapsed by default on /editor home (feature 24).
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const {
     ownedProjects,
     sharedProjects,
@@ -43,24 +44,24 @@ export function EditorShell({ initialOwned, initialShared }: EditorShellProps) {
   const isDeleteOpen = dialog.kind === "delete";
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-base text-text-primary">
+    <div className="relative h-screen w-full overflow-hidden bg-bg-base text-text-primary">
+      <main className="absolute inset-0 overflow-hidden">
+        <EditorHome onCreateProject={openCreate} />
+      </main>
       <EditorNavbar
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
       />
-      <main className="relative flex-1 overflow-hidden">
-        <ProjectSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          ownedProjects={ownedProjects}
-          sharedProjects={sharedProjects}
-          onCreateProject={openCreate}
-          onRenameProject={openRename}
-          onDeleteProject={openDelete}
-          onOpenProject={(projectId) => router.push(`/editor/${projectId}`)}
-        />
-        <EditorHome onCreateProject={openCreate} />
-      </main>
+      <ProjectSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        ownedProjects={ownedProjects}
+        sharedProjects={sharedProjects}
+        onCreateProject={openCreate}
+        onRenameProject={openRename}
+        onDeleteProject={openDelete}
+        onOpenProject={(projectId) => router.push(`/editor/${projectId}`)}
+      />
 
       <CreateProjectDialog
         open={isCreateOpen}

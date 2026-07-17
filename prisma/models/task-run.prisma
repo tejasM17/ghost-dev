@@ -1,0 +1,14 @@
+// Tracks Trigger.dev background runs so ownership can be verified before
+// issuing run-scoped public tokens to the client.
+
+model TaskRun {
+  id        String   @id @default(cuid())
+  runId     String   @unique @map("run_id")
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([runId])
+  @@index([userId, projectId])
+  @@map("task_runs")
+}

@@ -23,24 +23,13 @@ export default async function EditorRoomPage({ params }: EditorRoomPageProps) {
     redirect("/sign-in");
   }
 
-  // Check project access
-  const project = await getProjectWithAccess(roomId);
-  if (!project) {
-    // Return the shell with AccessDenied - we'll render it client-side
-    return (
-      <WorkspaceShell
-        project={null}
-        currentRoomId={roomId}
-        ownedProjects={[]}
-        sharedProjects={[]}
-      />
-    );
-  }
+  // Always load sidebar lists so access-denied and owner/collaborator
+  // shells can navigate between projects the user can open.
+  const { owned, shared } = await getAllProjects(
+    currentUser.userId,
+    currentUser.email,
+  );
 
-  // Fetch all projects for the sidebar (owned by userId, shared by email)
-  const { owned, shared } = await getAllProjects(currentUser.userId, currentUser.email);
-
-  // Transform to UI shape
   const ownedProjects = owned.map((p) => ({
     id: p.id,
     name: p.name,
@@ -55,10 +44,25 @@ export default async function EditorRoomPage({ params }: EditorRoomPageProps) {
     role: "collaborator" as const,
   }));
 
+  // Check project access
+  const project = await getProjectWithAccess(roomId);
+  if (!project) {
+    return (
+      <WorkspaceShell
+        project={null}
+        currentRoomId={roomId}
+        currentUserId={currentUser.userId}
+        ownedProjects={ownedProjects}
+        sharedProjects={sharedProjects}
+      />
+    );
+  }
+
   return (
     <WorkspaceShell
       project={{ id: project.id, name: project.name, ownerId: project.ownerId }}
       currentRoomId={roomId}
+      currentUserId={currentUser.userId}
       ownedProjects={ownedProjects}
       sharedProjects={sharedProjects}
     />

@@ -1,43 +1,77 @@
 "use client";
 
-import { useState } from "react";
-import { UserButton } from "@clerk/nextjs";
-import { PanelLeftClose, PanelLeftOpen, Share2, MessageSquare, X } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  X,
+  Network,
+  Sparkles,
+  LayoutTemplate,
+  Save,
+  Loader2,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { ProjectData } from "@/hooks/use-project-actions";
+import type { CanvasSaveStatus } from "@/hooks/use-canvas-autosave";
 import { AccessDenied } from "@/components/editor/access-denied";
-import { Canvas } from "@/components/editor/canvas";
+import { AiSidebar } from "@/components/editor/ai-sidebar";
+import { Canvas, CanvasLoading } from "@/components/editor/canvas";
+import { LiveblocksRoom } from "@/components/editor/liveblocks-room";
 import { ShareDialog } from "@/components/editor/share-dialog";
 import { useShareDialog } from "@/hooks/use-share-dialog";
 
 interface WorkspaceShellProps {
   project: { id: string; name: string; ownerId: string } | null;
   currentRoomId: string;
+  /** Clerk user id — used for owner checks independent of sidebar lists. */
+  currentUserId: string;
   ownedProjects: ProjectData[];
   sharedProjects: ProjectData[];
 }
 
 /**
  * Workspace shell for the editor. Contains the full-viewport layout with
- * navbar, left sidebar, canvas area, and right AI chat sidebar placeholder.
+ * navbar, left sidebar, canvas area, and right AI Workspace sidebar.
  */
 export function WorkspaceShell({
   project,
   currentRoomId,
+  currentUserId,
   ownedProjects,
   sharedProjects,
 }: WorkspaceShellProps) {
+  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<CanvasSaveStatus>("idle");
+  /** Latest saveNow from the canvas autosave hook (lives under Liveblocks). */
+  const latestSaveRef = useRef<() => void>(() => {});
 
-  // Determine if current user is owner by checking against the projects list
-  const isOwner = project
-    ? ownedProjects.some((p) => p.id === project.id && p.role === "owner")
-    : false;
+  const handleSaveStatusChange = useCallback((status: CanvasSaveStatus) => {
+    setSaveStatus(status);
+  }, []);
+
+  const handleSaveReady = useCallback((saveNow: () => void) => {
+    latestSaveRef.current = saveNow;
+  }, []);
+
+  const handleSaveClick = useCallback(() => {
+    latestSaveRef.current();
+  }, []);
+
+  // Owner is the project.ownerId match — do not rely on sidebar list alone
+  // (lists can be empty on edge paths; ownerId is authoritative).
+  const isOwner = project ? project.ownerId === currentUserId : false;
 
   // Share dialog state
   const shareDialog = useShareDialog(
@@ -48,7 +82,7 @@ export function WorkspaceShell({
   // If no project access, show access denied
   if (!project) {
     return (
-      <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-base text-text-primary">
+      <div className="relative h-screen w-full overflow-hidden bg-bg-base text-text-primary">
         <EditorNavbar
           projectName=""
           isSidebarOpen={isSidebarOpen}
@@ -56,14 +90,18 @@ export function WorkspaceShell({
           onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
           aiSidebarOpen={isAiSidebarOpen}
           onShareClick={() => {}}
+          showSaveButton={false}
+          saveStatus="idle"
+          onSaveClick={() => {}}
         />
-        <main className="relative flex-1 overflow-hidden">
+        <main className="absolute inset-0 overflow-hidden">
           <ProjectSidebar
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
             ownedProjects={ownedProjects}
             sharedProjects={sharedProjects}
             currentRoomId={currentRoomId}
+            onCreateProject={() => router.push("/editor")}
           />
           <AccessDenied />
           <AiSidebar
@@ -76,7 +114,33 @@ export function WorkspaceShell({
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-base text-text-primary">
+    <div className="relative h-screen w-full overflow-hidden bg-bg-base text-text-primary">
+      {/* Shared Liveblocks room so canvas + AI sidebar share presence and feeds */}
+      <LiveblocksRoom
+        roomId={currentRoomId}
+        fallback={
+          <div className="absolute inset-0">
+            <CanvasLoading />
+          </div>
+        }
+      >
+        <div className="absolute inset-0">
+          <Canvas
+            roomId={currentRoomId}
+            templatesOpen={templatesOpen}
+            onTemplatesOpenChange={setTemplatesOpen}
+            onSaveStatusChange={handleSaveStatusChange}
+            onSaveReady={handleSaveReady}
+          />
+        </div>
+        <AiSidebar
+          isOpen={isAiSidebarOpen}
+          onClose={() => setIsAiSidebarOpen(false)}
+          roomConnected
+          roomId={currentRoomId}
+          projectId={project.id}
+        />
+      </LiveblocksRoom>
       <EditorNavbar
         projectName={project.name}
         isSidebarOpen={isSidebarOpen}
@@ -84,21 +148,19 @@ export function WorkspaceShell({
         onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
         aiSidebarOpen={isAiSidebarOpen}
         onShareClick={shareDialog.onOpenChange}
+        onTemplatesClick={() => setTemplatesOpen(true)}
+        showSaveButton
+        saveStatus={saveStatus}
+        onSaveClick={handleSaveClick}
       />
-      <main className="relative flex-1 overflow-hidden">
-        <ProjectSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          ownedProjects={ownedProjects}
-          sharedProjects={sharedProjects}
-          currentRoomId={currentRoomId}
-        />
-        <Canvas roomId={currentRoomId} />
-        <AiSidebar
-          isOpen={isAiSidebarOpen}
-          onClose={() => setIsAiSidebarOpen(false)}
-        />
-      </main>
+      <ProjectSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        ownedProjects={ownedProjects}
+        sharedProjects={sharedProjects}
+        currentRoomId={currentRoomId}
+        onCreateProject={() => router.push("/editor")}
+      />
 
       {/* Share Dialog */}
       <ShareDialog
@@ -127,6 +189,43 @@ interface EditorNavbarProps {
   onToggleSidebar: () => void;
   onToggleAiSidebar: () => void;
   onShareClick: (open: boolean) => void;
+  /** Opens the starter templates import modal. Omitted when canvas is unavailable. */
+  onTemplatesClick?: () => void;
+  /**
+   * Workspace-only Save control. Hidden on access-denied and never used by
+   * the separate editor-home navbar component.
+   */
+  showSaveButton?: boolean;
+  /** Autosave status shown on the Save button. */
+  saveStatus: CanvasSaveStatus;
+  /** Manual save via the same persist path as autosave. */
+  onSaveClick: () => void;
+}
+
+function saveStatusLabel(status: CanvasSaveStatus): string {
+  switch (status) {
+    case "saving":
+      return "Saving...";
+    case "saved":
+      return "Saved";
+    case "error":
+      return "Error";
+    default:
+      return "Save";
+  }
+}
+
+function SaveStatusIcon({ status }: { status: CanvasSaveStatus }) {
+  if (status === "saving") {
+    return <Loader2 className="h-4 w-4 animate-spin" />;
+  }
+  if (status === "saved") {
+    return <Check className="h-4 w-4 text-state-success" />;
+  }
+  if (status === "error") {
+    return <AlertCircle className="h-4 w-4 text-state-error" />;
+  }
+  return <Save className="h-4 w-4" />;
 }
 
 function EditorNavbar({
@@ -136,10 +235,14 @@ function EditorNavbar({
   onToggleSidebar,
   onToggleAiSidebar,
   onShareClick,
+  onTemplatesClick,
+  showSaveButton = false,
+  saveStatus,
+  onSaveClick,
 }: EditorNavbarProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-bg-surface px-4">
-      <div className="flex items-center gap-3">
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 shrink-0 items-center justify-between px-3 pt-3">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-border-default bg-bg-surface/95 px-2 py-1.5 shadow-xl backdrop-blur-md">
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -153,15 +256,56 @@ function EditorNavbar({
             <PanelLeftOpen className="h-5 w-5" />
           )}
         </button>
-        {projectName ? (
-          <span className="text-sm font-medium text-text-primary">
-            {projectName}
+        <div className="flex min-w-0 flex-col pr-2">
+          {projectName ? (
+            <span className="truncate text-sm font-semibold text-text-primary">
+              {projectName}
+            </span>
+          ) : (
+            <span className="text-sm font-semibold text-text-primary">
+              Ghost Room
+            </span>
+          )}
+          <span className="text-[11px] font-medium text-text-faint">
+            Workspace
           </span>
-        ) : (
-          <span className="text-sm font-medium text-text-muted">Editor</span>
-        )}
+        </div>
       </div>
-      <div className="flex items-center gap-2">
+      {/* Right actions only — presence avatars + UserButton live on the canvas */}
+      <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-border-default bg-bg-surface/95 px-1.5 py-1.5 shadow-xl backdrop-blur-md">
+        {showSaveButton ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "gap-2",
+              saveStatus === "error" && "text-state-error",
+              saveStatus === "saved" && "text-state-success",
+              saveStatus === "saving" && "text-text-secondary",
+            )}
+            disabled={saveStatus === "saving"}
+            onClick={onSaveClick}
+            aria-live="polite"
+            aria-label={saveStatusLabel(saveStatus)}
+            title={saveStatusLabel(saveStatus)}
+          >
+            <SaveStatusIcon status={saveStatus} />
+            {saveStatusLabel(saveStatus)}
+          </Button>
+        ) : null}
+        {onTemplatesClick ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            onClick={onTemplatesClick}
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            Templates
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="ghost"
@@ -169,7 +313,7 @@ function EditorNavbar({
           className="gap-2"
           onClick={() => onShareClick(true)}
         >
-          <Share2 className="h-4 w-4" />
+          <Network className="h-4 w-4" />
           Share
         </Button>
         <Button
@@ -177,26 +321,14 @@ function EditorNavbar({
           variant="ghost"
           size="sm"
           className={cn(
-            "gap-2",
-            aiSidebarOpen && "bg-bg-elevated text-text-primary",
+            "gap-2 bg-accent-primary/10 text-accent-primary hover:bg-bg-elevated hover:text-accent-primary",
+            aiSidebarOpen && "bg-accent-primary/20",
           )}
           onClick={onToggleAiSidebar}
         >
-          <MessageSquare className="h-4 w-4" />
-          AI Chat
+          <Sparkles className="h-4 w-4" />
+          AI
         </Button>
-      </div>
-      <div className="flex items-center">
-        <UserButton
-          appearance={{
-            elements: {
-              userButtonBox: "h-9 w-9",
-              userButtonTrigger:
-                "h-9 w-9 rounded-xl ring-1 ring-border-default hover:ring-border-subtle transition",
-              userButtonAvatarBox: "h-9 w-9 rounded-xl",
-            },
-          }}
-        />
       </div>
     </header>
   );
@@ -208,6 +340,8 @@ interface ProjectSidebarProps {
   ownedProjects: ProjectData[];
   sharedProjects: ProjectData[];
   currentRoomId: string;
+  /** Navigate to editor home to create a project (full create dialog lives there). */
+  onCreateProject: () => void;
 }
 
 function ProjectSidebar({
@@ -216,7 +350,15 @@ function ProjectSidebar({
   ownedProjects,
   sharedProjects,
   currentRoomId,
+  onCreateProject,
 }: ProjectSidebarProps) {
+  // Default to Shared when the active project is shared and My is empty of active.
+  const defaultTab =
+    sharedProjects.some((p) => p.id === currentRoomId) &&
+    !ownedProjects.some((p) => p.id === currentRoomId)
+      ? "shared"
+      : "my-projects";
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -236,8 +378,10 @@ function ProjectSidebar({
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "pointer-events-none fixed left-0 top-0 z-40 flex h-full w-80 flex-col border-r border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full",
+          "pointer-events-none fixed left-3 top-16 z-40 flex h-[calc(100vh-5rem)] w-80 flex-col overflow-hidden rounded-2xl border border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
+          isOpen
+            ? "translate-x-0 pointer-events-auto"
+            : "-translate-x-[calc(100%+1.5rem)]",
         )}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4">
@@ -252,7 +396,10 @@ function ProjectSidebar({
           </button>
         </div>
 
-        <Tabs defaultValue="my-projects" className="flex flex-1 flex-col overflow-hidden">
+        <Tabs
+          defaultValue={defaultTab}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
           <div className="px-4 pt-3">
             <TabsList className="inline-flex h-9 w-full items-center justify-center rounded-xl bg-bg-elevated p-1 text-text-muted">
               <TabsTrigger
@@ -297,10 +444,9 @@ function ProjectSidebar({
             type="button"
             className="w-full"
             size="default"
-            // Create project not wired yet
-            onClick={() => {}}
+            onClick={onCreateProject}
           >
-            <Share2 className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
             New Project
           </Button>
         </div>
@@ -367,53 +513,3 @@ function ProjectRow({ project, isActive }: ProjectRowProps) {
   );
 }
 
-interface AiSidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-/**
- * Right sidebar placeholder for future AI chat.
- */
-function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
-  return (
-    <>
-      {/* Mobile backdrop for AI sidebar */}
-      <button
-        type="button"
-        aria-hidden={!isOpen}
-        tabIndex={isOpen ? 0 : -1}
-        onClick={onClose}
-        aria-label="Close AI chat"
-        className={cn(
-          "fixed inset-0 z-30 bg-bg-base/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out md:hidden",
-          isOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0",
-        )}
-      />
-      <aside
-        aria-hidden={!isOpen}
-        className={cn(
-          "pointer-events-none fixed right-0 top-0 z-40 flex h-full w-80 flex-col border-l border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full",
-        )}
-      >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4">
-          <h2 className="text-sm font-semibold text-text-primary">AI Chat</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close AI chat"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-subtle"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-text-muted">AI chat coming soon</p>
-        </div>
-      </aside>
-    </>
-  );
-}
