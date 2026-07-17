@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 25** — Completed
-- Next: feature 26 (TBD)
+- **Feature 27** — Completed
+- Next: feature 28 (TBD)
 
 ## Stack (quick)
 
@@ -20,7 +20,7 @@ Keep this file short. Read feature specs + code for detail.
 | Jobs | Trigger.dev (`src/trigger/`, `@trigger.dev/sdk`) |
 | Types | `types/canvas.ts`, `types/tasks.ts` (AI status + chat feed schemas) |
 
-## Done (features 01–25)
+## Done (features 01–27)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -49,17 +49,32 @@ Keep this file short. Read feature specs + code for detail.
 | 23 | Design agent logic | Gemini plan → `mutateFlow` canvas writes, AI presence + status feed |
 | 24 | AI presence state | Liveblocks feed `ai-status-feed`, sidebar thinking UI, cursor spinners |
 | 25 | Sidebar chat feed | Liveblocks feed `ai-chat`, Zod validation, send via sidebar input |
+| 26 | AI chat functional | design submit + `useRealtimeRun`, status strip, AI final chat message |
+| 27 | Spec generation flow | `POST /api/ai/spec`, `POST /api/ai/spec/token`, `src/trigger/generate-spec.ts` |
 
-## Feature 25 (current)
+## Feature 27 (done)
 
-- `types/tasks.ts` — `AI_CHAT_FEED_ID`, `aiChatFeedMessageSchema` / `parseAiChatFeedPayload` (sender, role, content, timestamp)
-- Liveblocks feed id `ai-chat` (room-scoped; separate from `ai-status-feed`)
-- `ai-chat-feed.tsx` — ensure feed, non-suspense `useFeedMessages`, `useCreateFeedMessage` send
-- `ai-sidebar.tsx` — subscribe/render chat (sender, time, content); clear input on success; send error line
-- `ai-status-feed.tsx` — switched to non-suspense feed hooks (avoids timeout crash)
-- `POST /api/liveblocks-auth` — ensures `ai-status-feed` + `ai-chat` exist before clients connect
-- `liveblocks.config.ts` — `FeedMessageData` union of status + chat payloads
-- Scope: collaborative chat only (no AI replies / design task triggers)
+Verified against `context/feature-specs/27-spec-generation-flow.md`:
+
+- **Trigger**: `POST /api/ai/spec` accepts `{ roomId, chatHistory, nodes, edges }`, auth + access via `roomId` (no client `projectId`), triggers `generate-spec`, creates `TaskRun`, returns `runId`
+- **Token**: `POST /api/ai/spec/token` accepts `runId`, verifies TaskRun owner, issues Trigger public token scoped to that run with `expirationTime: "1hr"`
+- **Task**: `src/trigger/generate-spec.ts` — Zod payload, Gemini Markdown via `@ai-sdk/google` + `generateText`, run `metadata` for status, returns plain Markdown in task output (no persistence)
+- **Scope**: backend only — no frontend, no spec editor, no final spec storage
+- **Key files**: `app/api/ai/spec/route.ts`, `app/api/ai/spec/token/route.ts`, `src/trigger/generate-spec.ts`
+
+## Feature 26 (done)
+
+Verified against `context/feature-specs/26-ai-chat-functional.md`:
+
+- **Submit**: user msg → `ai-chat` feed → `POST /api/ai/design` with `{ prompt, roomId, projectId }` → store `runId` + `publicToken` (token from response or `POST /api/ai/design/token`)
+- **Run tracking**: `useRealtimeRun(runId, { accessToken: publicToken })`; input disabled + button spinner while active
+- **On complete/fail**: push assistant message to `ai-chat`, clear run state; API/network errors also as chat messages
+- **Status strip**: latest text from `ai-status-feed` via `useAiActivityState`, only while run active
+- **Canvas**: no manual node/edge sync — Liveblocks/`useLiveblocksFlow` only
+- **UI**: user bubbles + submit use green `#62C073` (palette); AI bubbles dark elevated
+- **Wiring**: `workspace-shell` passes `roomId` + `projectId` + `roomConnected` into `AiSidebar`
+- **Scope**: frontend only (no backend/Trigger task changes)
+- **Key files**: `components/editor/ai-sidebar.tsx`, `ai-chat-feed.tsx`, `ai-status-feed.tsx`
 
 ## Bugfixes (shared projects + sidebar)
 
@@ -74,6 +89,7 @@ Keep this file short. Read feature specs + code for detail.
 - Canvas types stay shared: `types/canvas.ts`
 - Do not invent features — follow `context/feature-specs/*` and user context
 - Chat feed (`ai-chat`) stays separate from status feed (`ai-status-feed`)
+- Spec access is resolved from authenticated user + `roomId` (never client-supplied project IDs)
 
 ## Bugfixes (Liveblocks canvas issues 2–8)
 

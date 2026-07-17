@@ -132,6 +132,8 @@ export function WorkspaceShell({
           isOpen={isAiSidebarOpen}
           onClose={() => setIsAiSidebarOpen(false)}
           roomConnected
+          roomId={currentRoomId}
+          projectId={project.id}
         />
       </LiveblocksRoom>
       <EditorNavbar

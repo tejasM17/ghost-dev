@@ -38,13 +38,28 @@ export function useEnsureAiChatFeed(): void {
  * Uses non-suspense `useFeedMessages` so fetch timeouts/errors do not
  * crash the sidebar (important for collaborators joining a room).
  */
+export interface PostAiChatMessageOptions {
+  /** Defaults to `"user"`. Use `"assistant"` / `"system"` for AI replies and errors. */
+  role?: AiChatFeedPayload["role"];
+  /** Defaults to the current Liveblocks self name (or "Ghost AI" for assistant). */
+  sender?: string;
+  /**
+   * When false, do not flip `isSending` / `sendError` (used for AI final replies
+   * so they do not block the input spinner path). Default true for user sends.
+   */
+  trackSending?: boolean;
+}
+
 export function useAiChatFeed(): {
   messages: AiChatMessage[];
   isLoading: boolean;
   feedError: Error | null;
   sendError: string | null;
   isSending: boolean;
-  sendMessage: (content: string) => Promise<boolean>;
+  sendMessage: (
+    content: string,
+    options?: PostAiChatMessageOptions,
+  ) => Promise<boolean>;
 } {
   useEnsureAiChatFeed();
 
@@ -78,16 +93,29 @@ export function useAiChatFeed(): {
   }, [rawMessages]);
 
   const sendMessage = useCallback(
-    async (content: string): Promise<boolean> => {
+    async (
+      content: string,
+      options?: PostAiChatMessageOptions,
+    ): Promise<boolean> => {
       const trimmed = content.trim();
       if (!trimmed) return false;
 
-      setIsSending(true);
-      setSendError(null);
+      const role = options?.role ?? "user";
+      const trackSending = options?.trackSending ?? role === "user";
+      const defaultSender =
+        role === "assistant" || role === "system"
+          ? "Ghost AI"
+          : self?.info?.name?.trim() || "Someone";
+      const sender = options?.sender?.trim() || defaultSender;
+
+      if (trackSending) {
+        setIsSending(true);
+        setSendError(null);
+      }
 
       const payload: AiChatFeedPayload = {
-        sender: self?.info?.name?.trim() || "Someone",
-        role: "user",
+        sender,
+        role,
         content: trimmed,
         timestamp: Date.now(),
       };
@@ -96,10 +124,14 @@ export function useAiChatFeed(): {
         await createFeedMessage(AI_CHAT_FEED_ID, { ...payload });
         return true;
       } catch {
-        setSendError("Couldn’t send message. Try again.");
+        if (trackSending) {
+          setSendError("Couldn’t send message. Try again.");
+        }
         return false;
       } finally {
-        setIsSending(false);
+        if (trackSending) {
+          setIsSending(false);
+        }
       }
     },
     [createFeedMessage, self?.info?.name],
