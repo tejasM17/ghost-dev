@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -9,6 +9,10 @@ import {
   Network,
   Sparkles,
   LayoutTemplate,
+  Save,
+  Loader2,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { ProjectData } from "@/hooks/use-project-actions";
+import type { CanvasSaveStatus } from "@/hooks/use-canvas-autosave";
 import { AccessDenied } from "@/components/editor/access-denied";
 import { AiSidebar } from "@/components/editor/ai-sidebar";
 import { Canvas } from "@/components/editor/canvas";
@@ -42,6 +47,21 @@ export function WorkspaceShell({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<CanvasSaveStatus>("idle");
+  /** Latest saveNow from the canvas autosave hook (lives under Liveblocks). */
+  const latestSaveRef = useRef<() => void>(() => {});
+
+  const handleSaveStatusChange = useCallback((status: CanvasSaveStatus) => {
+    setSaveStatus(status);
+  }, []);
+
+  const handleSaveReady = useCallback((saveNow: () => void) => {
+    latestSaveRef.current = saveNow;
+  }, []);
+
+  const handleSaveClick = useCallback(() => {
+    latestSaveRef.current();
+  }, []);
 
   // Determine if current user is owner by checking against the projects list
   const isOwner = project
@@ -65,6 +85,9 @@ export function WorkspaceShell({
           onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
           aiSidebarOpen={isAiSidebarOpen}
           onShareClick={() => {}}
+          showSaveButton={false}
+          saveStatus="idle"
+          onSaveClick={() => {}}
         />
         <main className="absolute inset-0 overflow-hidden">
           <ProjectSidebar
@@ -91,6 +114,8 @@ export function WorkspaceShell({
           roomId={currentRoomId}
           templatesOpen={templatesOpen}
           onTemplatesOpenChange={setTemplatesOpen}
+          onSaveStatusChange={handleSaveStatusChange}
+          onSaveReady={handleSaveReady}
         />
       </div>
       <EditorNavbar
@@ -101,6 +126,9 @@ export function WorkspaceShell({
         aiSidebarOpen={isAiSidebarOpen}
         onShareClick={shareDialog.onOpenChange}
         onTemplatesClick={() => setTemplatesOpen(true)}
+        showSaveButton
+        saveStatus={saveStatus}
+        onSaveClick={handleSaveClick}
       />
       <ProjectSidebar
         isOpen={isSidebarOpen}
@@ -143,6 +171,41 @@ interface EditorNavbarProps {
   onShareClick: (open: boolean) => void;
   /** Opens the starter templates import modal. Omitted when canvas is unavailable. */
   onTemplatesClick?: () => void;
+  /**
+   * Workspace-only Save control. Hidden on access-denied and never used by
+   * the separate editor-home navbar component.
+   */
+  showSaveButton?: boolean;
+  /** Autosave status shown on the Save button. */
+  saveStatus: CanvasSaveStatus;
+  /** Manual save via the same persist path as autosave. */
+  onSaveClick: () => void;
+}
+
+function saveStatusLabel(status: CanvasSaveStatus): string {
+  switch (status) {
+    case "saving":
+      return "Saving...";
+    case "saved":
+      return "Saved";
+    case "error":
+      return "Error";
+    default:
+      return "Save";
+  }
+}
+
+function SaveStatusIcon({ status }: { status: CanvasSaveStatus }) {
+  if (status === "saving") {
+    return <Loader2 className="h-4 w-4 animate-spin" />;
+  }
+  if (status === "saved") {
+    return <Check className="h-4 w-4 text-state-success" />;
+  }
+  if (status === "error") {
+    return <AlertCircle className="h-4 w-4 text-state-error" />;
+  }
+  return <Save className="h-4 w-4" />;
 }
 
 function EditorNavbar({
@@ -153,6 +216,9 @@ function EditorNavbar({
   onToggleAiSidebar,
   onShareClick,
   onTemplatesClick,
+  showSaveButton = false,
+  saveStatus,
+  onSaveClick,
 }: EditorNavbarProps) {
   return (
     <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 shrink-0 items-center justify-between px-3 pt-3">
@@ -187,6 +253,27 @@ function EditorNavbar({
       </div>
       {/* Right actions only — presence avatars + UserButton live on the canvas */}
       <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-border-default bg-bg-surface/95 px-1.5 py-1.5 shadow-xl backdrop-blur-md">
+        {showSaveButton ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "gap-2",
+              saveStatus === "error" && "text-state-error",
+              saveStatus === "saved" && "text-state-success",
+              saveStatus === "saving" && "text-text-secondary",
+            )}
+            disabled={saveStatus === "saving"}
+            onClick={onSaveClick}
+            aria-live="polite"
+            aria-label={saveStatusLabel(saveStatus)}
+            title={saveStatusLabel(saveStatus)}
+          >
+            <SaveStatusIcon status={saveStatus} />
+            {saveStatusLabel(saveStatus)}
+          </Button>
+        ) : null}
         {onTemplatesClick ? (
           <Button
             type="button"

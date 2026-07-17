@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 20** — Completed
-- Next: feature 21 (TBD)
+- **Feature 21** — Completed
+- Next: feature 22 (TBD)
 
 ## Stack (quick)
 
@@ -16,9 +16,10 @@ Keep this file short. Read feature specs + code for detail.
 | Auth | Clerk (`proxy.ts` middleware) |
 | DB | Prisma 7 + PostgreSQL (`lib/prisma.ts`, `prisma/models/`) |
 | Canvas | Liveblocks + React Flow (`@liveblocks/react-flow`) |
+| Blob | Vercel Blob (`@vercel/blob`) — canvas JSON snapshots |
 | Types | `types/canvas.ts` — `CanvasNode` / `CanvasEdge` |
 
-## Done (features 01–20)
+## Done (features 01–21)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -42,16 +43,16 @@ Keep this file short. Read feature specs + code for detail.
 | 18 | Starter templates | `starter-templates.ts`, `starter-templates-modal.tsx` |
 | 19 | Presence avatars & cursors | `presence-avatars.tsx`, `live-cursors.tsx`, `liveblocks.config.ts` |
 | 20 | AI sidebar shell | `ai-sidebar.tsx`, wired from `workspace-shell.tsx` |
+| 21 | Canvas autosave | `PUT/GET /api/projects/[projectId]/canvas`, `use-canvas-autosave`, `use-canvas-load` |
 
-## Feature 20 (current)
+## Feature 21 (current)
 
-- Extracted floating AI sidebar into `components/editor/ai-sidebar.tsx`
-- Parent-controlled open/close; preserved slide-in, placement, surface, shadow
-- Header: AI Workspace + Collaborate with Ghost AI + bot icon + close
-- Tabs: AI Architect | Specs (accent-ai active styling)
-- Architect: empty state, starter chips, local message bubbles, auto-resize textarea, Enter/Shift+Enter
-- Specs: Generate Spec button + static demo card with disabled download
-- No backend / Liveblocks / generation logic
+- Reused `Project.canvasJsonPath` for blob URL metadata (Prisma only)
+- Installed `@vercel/blob`; canvas JSON at `canvas/{projectId}.json`
+- `PUT/GET /api/projects/[projectId]/canvas` — auth via project access, Blob + Prisma
+- Debounced autosave hook (`hooks/use-canvas-autosave.ts`) — status: idle/saving/saved/error
+- Empty-room hydrate from blob (`hooks/use-canvas-load.ts`); skips if room has nodes/edges
+- Navbar Save indicator shows saving / saved / error
 
 ## Bugfixes (shared projects + sidebar)
 
@@ -63,7 +64,7 @@ Keep this file short. Read feature specs + code for detail.
 ## Architecture invariants
 
 - RSC by default; `"use client"` only for interactivity / realtime
-- Project metadata in Postgres; canvas graph in Liveblocks room storage
+- Project metadata in Postgres; live graph in Liveblocks; canvas snapshots in Vercel Blob
 - Auth + ownership checked on every mutation API
 - UI tokens only (`bg-base`, `text-copy-*`, etc.) — no raw color utilities
 - Canvas types stay shared: `types/canvas.ts`

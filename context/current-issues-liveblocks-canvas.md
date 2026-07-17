@@ -1,72 +1,142 @@
-Fix All The Following Issues :
+Review the editor workspace implementation and fix the following
+issues. Check `components/editor` first. Do not break existing
+features.
 
-## Sahred Project issue:
-- When the owner try to invite the collaborator the invitation is failing, 
-- after refreshing the error is gone, but at the collaborator's dashboard project is not opening with the same `project_id` of woner's `project_id`
-- then Try to open the same project in collaborator's dashboard also fasing with some errors. 
+## Issues
 
-## Editing, Deleteing Project issue:
-- Reade `project-sidebar.tsx`. When the user try to edit the project's Name or to delete the project.. istade of showing  the potions to edit or delete, It's loading the project's canvas 
-- fix it: canvas do not load when click the 3 dot button. only shows the options to edit or deleate the project
+### 1. Save Button in Workspace Navbar
 
-# Tips to fix the issues:
-- All the reqired `liveblocks-skills` and `clerk-skills` avilable at `.agents/skills/` or `.claude/skills/` also use the skills to fix this issue
+**Status: pending to test**
 
-### Error after inviting the collaborator :
+Read the navbar component and the autosave hook before
+implementing.
 
-```
-## Error Type
-Runtime TypeError
+The workspace navbar is missing a Save button. The autosave
+hook already exists and tracks saving/saved/error states —
+wire the button to it.
 
-## Error Message
-collaborator.createdAt.toISOString is not a function
+Add the Save button to the workspace navbar only. The navbar
+is shared with editor home so conditionally render the button
+based on workspace context — it must not appear on the editor
+home navbar.
 
+Button behavior:
 
-    at useShareDialog.useCallback[submitInvite] (hooks/use-share-dialog.ts:76:64)
-    at useShareDialog (hooks/use-share-dialog.ts:13:53)
-    at WorkspaceShell (components/editor/workspace-shell.tsx:52:37)
-    at EditorRoomPage (app/editor/[roomId]/page.tsx:59:5)
+- default state: shows "Save"
+- while saving: shows "Saving..."
+- after successful save: shows "Saved" briefly then returns
+  to "Save"
+- on error: shows "Error" briefly then returns to "Save"
+- clicking it triggers a manual save through the same save
+  function the autosave hook uses
 
-## Code Frame
-  74 |         setCollaborators((current) => [
-  75 |           ...current,
-> 76 |           { ...collaborator, createdAt: collaborator.createdAt.toISOString() },
-     |                                                                ^
-  77 |         ]);
-  78 |         setInviteEmail("");
-  79 |       });
+Also fix the canvas save API route. Open the route file at
+`app/api/projects/[projectId]/canvas/route.ts` and make
+these two changes:
 
-Next.js version: 16.2.10 (Turbopack)
-```
+- in the PUT handler change `access: "public"` to
+  `access: "private"` in the Vercel Blob put call
+- in the GET handler replace any raw fetch call with the
+  Vercel Blob SDK to retrieve the blob content using the
+  stored URL
 
-### Error during opening the same project in collaboorator's dashboard:
+Do not change anything else.
 
-- Error 1:
+### 2. Delete Nodes and Edges
 
-```
-## Error Type
-Console Error
+Read Liveblocks agent skills before implementing this.
+Then read the canvas wrapper component and the existing
+node and edge mutation helpers.
 
-## Error Message
-[Liveblocks "You have no access to this room"
+Selected nodes and edges cannot be deleted from the canvas.
 
-Next.js version: 16.2.10 (Turbopack)
-```
+Add a keydown event listener to the canvas wrapper that:
 
-- Error 2:
+- listens for Delete and Backspace keys
+- does not fire when the event target is an input, textarea,
+  or contenteditable element
+- gets currently selected nodes using useNodes() filtered
+  by selected state
+- gets currently selected edges using useEdges() filtered
+  by selected state
+- removes them using the existing Liveblocks collaborative
+  mutation helpers
 
-```
-## Error Type
-Console Error
+Do not use React Flow's built-in deleteKeyCode or any
+React Flow keyboard deletion behavior. All deletions must
+go through the existing Liveblocks collaborative state so
+they sync across all connected clients in real time.
 
-## Error Message
-[Liveblocks "Connection to websocket server closed. Reason: You have no access to this room (code: 4001)."
+Do not change anything else.
 
-Next.js version: 16.2.10 (Turbopack)
-```
+### 3. Node Connection Handles
 
-## Check When Done
+Read Liveblocks agent skills before implementing this.
 
-- Owner can create new project, edit project, delete project.
-- owner can send invitations to single or multiple collaborators with Zero Errors.
-- At collaborator's Shared projects load cleanly without any Errors.
+Nodes can only be connected from the top handle. All four
+handles — top, right, bottom, left — should be active and
+connectable. Check the existing Handle components in the
+custom node renderer. Verify each handle has the correct
+position prop and that no CSS is hiding or disabling the
+non-top handles. Connection between any two handles on any
+two nodes should work and sync through the existing
+Liveblocks edge state.
+
+### 4. Drag and Drop Position Offset
+
+Read Liveblocks agent skills before implementing this.
+
+When dropping a shape from the shape panel onto the canvas,
+the node places below where the cursor actually is.
+
+Check the drop handler in the canvas wrapper. The position
+calculation must account for:
+
+- the drag offset from where the user grabbed the shape
+  inside the drag element, not just the element's top-left
+  corner
+- the canvas container's bounding rect
+- the current React Flow pan offset and zoom scale via
+  screenToFlowPosition or project
+
+The node should appear with its center at the exact cursor
+position on drop.
+
+### 5. Auto Zoom on First Node Drop
+
+Read Liveblocks agent skills before implementing this.
+
+Dropping the first node onto a fully empty canvas causes an
+automatic zoom-in. This does not happen when other nodes
+exist. Check the drop handler and any fitView or fitBounds
+calls that may be triggered after the first node is added.
+Disable or guard any automatic fit/zoom behavior so it does
+not fire during a drop event. The viewport should stay
+exactly where the user left it after dropping a node.
+
+### 6. Collaborator Avatar Image Error
+
+Check Clerk agent skills before implementing this.
+
+Add img.clerk.com to the allowed image hostnames in
+next.config.js using the correct remotePatterns
+configuration.
+
+### 7. Remove UserButton from Workspace Navbar
+
+Check Clerk agent skills before implementing this.
+
+Remove the UserButton from the workspace navbar only. The
+navbar is shared so make sure the UserButton remains on the
+editor home navbar. Conditionally render it based on whether
+the component is being used in the workspace context or the
+editor home context.
+
+## Scope
+
+- Fix only what is listed above
+- Do not change canvas node or edge rendering behavior
+- Do not modify the editor home navbar layout
+- Do not break existing autosave, presence, or collaboration
+  logic
+- npm run build passes

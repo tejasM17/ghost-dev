@@ -52,6 +52,11 @@ import {
   cloneTemplateWithFreshIds,
   type CanvasTemplate,
 } from "./starter-templates";
+import {
+  useCanvasAutosave,
+  type CanvasSaveStatus,
+} from "@/hooks/use-canvas-autosave";
+import { useCanvasLoad } from "@/hooks/use-canvas-load";
 
 /** Default style for newly created edges — light stroke, rounded ends, arrow. */
 const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
@@ -77,20 +82,26 @@ interface CanvasProps {
   /** Controlled open state for the starter templates import modal. */
   templatesOpen?: boolean;
   onTemplatesOpenChange?: (open: boolean) => void;
+  /** Notifies the shell when autosave status changes (for the Save button). */
+  onSaveStatusChange?: (status: CanvasSaveStatus) => void;
+  /** Exposes manual save to the workspace navbar Save button. */
+  onSaveReady?: (saveNow: () => void) => void;
 }
 
 /**
  * Client-side collaborative canvas for a project.
  *
  * Wires up Liveblocks (auth + room) and React Flow (`useLiveblocksFlow`)
- * together so nodes and edges sync between every collaborator. This is
- * the foundation of the editor — node/edge rendering and persistence
- * land in later features.
+ * together so nodes and edges sync between every collaborator. Also
+ * hydrates from Vercel Blob when the room is empty and debounced-autosaves
+ * canvas JSON through the project canvas API.
  */
 export function Canvas({
   roomId,
   templatesOpen = false,
   onTemplatesOpenChange,
+  onSaveStatusChange,
+  onSaveReady,
 }: CanvasProps) {
   return (
     <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
@@ -102,8 +113,11 @@ export function Canvas({
           <ClientSideSuspense fallback={<CanvasLoading />}>
             <ReactFlowProvider>
               <CollaborativeFlow
+                projectId={roomId}
                 templatesOpen={templatesOpen}
                 onTemplatesOpenChange={onTemplatesOpenChange}
+                onSaveStatusChange={onSaveStatusChange}
+                onSaveReady={onSaveReady}
               />
             </ReactFlowProvider>
           </ClientSideSuspense>
@@ -173,8 +187,11 @@ function generateNodeId(shape: NodeShape): string {
 }
 
 interface CollaborativeFlowProps {
+  projectId: string;
   templatesOpen: boolean;
   onTemplatesOpenChange?: (open: boolean) => void;
+  onSaveStatusChange?: (status: CanvasSaveStatus) => void;
+  onSaveReady?: (saveNow: () => void) => void;
 }
 
 /**
@@ -182,8 +199,11 @@ interface CollaborativeFlowProps {
  * and the storage layer is ready (via Suspense).
  */
 function CollaborativeFlow({
+  projectId,
   templatesOpen,
   onTemplatesOpenChange,
+  onSaveStatusChange,
+  onSaveReady,
 }: CollaborativeFlowProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
@@ -215,28 +235,31 @@ function CollaborativeFlow({
   );
 
   /**
-   * Replace the entire collaborative graph with a starter template.
-   * Clears existing nodes/edges first, then adds the template graph and
-   * fits the view once the new elements are in place.
+   * Apply a full graph snapshot into collaborative storage (blob hydrate
+   * or template import). When `replace` is true, clears existing elements
+   * first; when false (blob load into empty room), only adds.
    */
-  const handleImportTemplate = useCallback(
-    (template: CanvasTemplate) => {
-      const { nodes: nextNodes, edges: nextEdges } =
-        cloneTemplateWithFreshIds(template);
+  const applySnapshot = useCallback(
+    (
+      nextNodes: CanvasNode[],
+      nextEdges: CanvasEdge[],
+      options?: { replace?: boolean },
+    ) => {
+      const replace = options?.replace ?? false;
 
-      // Remove every existing edge, then every existing node.
-      if (edges.length > 0) {
-        onEdgesChange(
-          edges.map((edge) => ({ type: "remove" as const, id: edge.id })),
-        );
-      }
-      if (nodes.length > 0) {
-        onNodesChange(
-          nodes.map((node) => ({ type: "remove" as const, id: node.id })),
-        );
+      if (replace) {
+        if (edges.length > 0) {
+          onEdgesChange(
+            edges.map((edge) => ({ type: "remove" as const, id: edge.id })),
+          );
+        }
+        if (nodes.length > 0) {
+          onNodesChange(
+            nodes.map((node) => ({ type: "remove" as const, id: node.id })),
+          );
+        }
       }
 
-      // Add template graph into collaborative storage.
       if (nextNodes.length > 0) {
         onNodesChange(
           nextNodes.map((node) => ({ type: "add" as const, item: node })),
@@ -248,12 +271,54 @@ function CollaborativeFlow({
         );
       }
 
-      // Fit after React Flow has applied the new graph.
       window.setTimeout(() => {
         void fitView({ duration: 200, padding: 0.15 });
       }, 50);
     },
     [edges, nodes, onEdgesChange, onNodesChange, fitView],
+  );
+
+  const handleBlobLoad = useCallback(
+    (snapshot: { nodes: CanvasNode[]; edges: CanvasEdge[] }) => {
+      applySnapshot(snapshot.nodes, snapshot.edges, { replace: false });
+    },
+    [applySnapshot],
+  );
+
+  const { isReady: canvasLoadReady } = useCanvasLoad({
+    projectId,
+    nodes,
+    edges,
+    onLoad: handleBlobLoad,
+  });
+
+  const { status: saveStatus, saveNow } = useCanvasAutosave({
+    projectId,
+    nodes,
+    edges,
+    enabled: canvasLoadReady,
+  });
+
+  useEffect(() => {
+    onSaveStatusChange?.(saveStatus);
+  }, [saveStatus, onSaveStatusChange]);
+
+  useEffect(() => {
+    onSaveReady?.(saveNow);
+  }, [saveNow, onSaveReady]);
+
+  /**
+   * Replace the entire collaborative graph with a starter template.
+   * Clears existing nodes/edges first, then adds the template graph and
+   * fits the view once the new elements are in place.
+   */
+  const handleImportTemplate = useCallback(
+    (template: CanvasTemplate) => {
+      const { nodes: nextNodes, edges: nextEdges } =
+        cloneTemplateWithFreshIds(template);
+      applySnapshot(nextNodes, nextEdges, { replace: true });
+    },
+    [applySnapshot],
   );
 
   // Memoized type maps — stable refs so React Flow does not remount nodes/edges
