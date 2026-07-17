@@ -33,10 +33,10 @@ export function LiveCursors() {
           >
             <CursorPointer color={color} />
             <div
-              className="ml-3 mt-0.5 max-w-[10rem] truncate rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white shadow-md"
+              className="ml-3 mt-0.5 max-w-[12rem] truncate rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white shadow-md"
               style={{ backgroundColor: color }}
             >
-              {name}
+              {other.presence.thinking ? `${name} · thinking` : name}
             </div>
           </div>
         );

@@ -41,6 +41,7 @@ export function PresenceAvatars() {
                 name={other.info.name}
                 avatar={other.info.avatar}
                 color={other.info.color}
+                thinking={other.presence.thinking}
               />
             ))}
             {overflow > 0 ? (
@@ -85,9 +86,15 @@ interface CollaboratorAvatarProps {
   name: string;
   avatar: string;
   color: string;
+  thinking?: boolean;
 }
 
-function CollaboratorAvatar({ name, avatar, color }: CollaboratorAvatarProps) {
+function CollaboratorAvatar({
+  name,
+  avatar,
+  color,
+  thinking = false,
+}: CollaboratorAvatarProps) {
   const initials = getInitials(name);
 
   return (
@@ -95,9 +102,10 @@ function CollaboratorAvatar({ name, avatar, color }: CollaboratorAvatarProps) {
       className={cn(
         AVATAR_SIZE,
         "relative z-0 flex shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-bg-base",
+        thinking && "ring-accent-ai-text/80 animate-pulse",
       )}
       style={{ backgroundColor: color }}
-      title={name}
+      title={thinking ? `${name} (thinking)` : name}
       aria-hidden
     >
       {avatar ? (

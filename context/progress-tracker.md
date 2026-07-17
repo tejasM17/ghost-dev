@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 21** — Completed
-- Next: feature 22 (TBD)
+- **Feature 23** — Completed
+- Next: feature 24 (TBD)
 
 ## Stack (quick)
 
@@ -17,9 +17,10 @@ Keep this file short. Read feature specs + code for detail.
 | DB | Prisma 7 + PostgreSQL (`lib/prisma.ts`, `prisma/models/`) |
 | Canvas | Liveblocks + React Flow (`@liveblocks/react-flow`) |
 | Blob | Vercel Blob (`@vercel/blob`) — canvas JSON snapshots |
+| Jobs | Trigger.dev (`src/trigger/`, `@trigger.dev/sdk`) |
 | Types | `types/canvas.ts` — `CanvasNode` / `CanvasEdge` |
 
-## Done (features 01–21)
+## Done (features 01–23)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -44,22 +45,22 @@ Keep this file short. Read feature specs + code for detail.
 | 19 | Presence avatars & cursors | `presence-avatars.tsx`, `live-cursors.tsx`, `liveblocks.config.ts` |
 | 20 | AI sidebar shell | `ai-sidebar.tsx`, wired from `workspace-shell.tsx` |
 | 21 | Canvas autosave | `PUT/GET /api/projects/[projectId]/canvas`, `use-canvas-autosave`, `use-canvas-load` |
+| 22 | Design agent API | `POST /api/ai/design`, `POST /api/ai/design/token`, `TaskRun`, `src/trigger/design-agent.ts` |
+| 23 | Design agent logic | Gemini plan → `mutateFlow` canvas writes, AI presence + `AI_STATUS` feed |
 
-## Feature 21 (current)
+## Feature 23 (current)
 
-- Reused `Project.canvasJsonPath` for blob URL metadata (Prisma only)
-- Installed `@vercel/blob`; canvas JSON at `canvas/{projectId}.json`
-- `PUT/GET /api/projects/[projectId]/canvas` — auth via project access, Blob + Prisma
-- Debounced autosave hook (`hooks/use-canvas-autosave.ts`) — status: idle/saving/saved/error
-- Empty-room hydrate from blob (`hooks/use-canvas-load.ts`); skips if room has nodes/edges
-- Navbar Save indicator shows saving / saved / error
+- `src/trigger/design-agent.ts` — full agent: Gemini (`@ai-sdk/google` + `generateObject`) plans canvas actions, applies them via `@liveblocks/react-flow/node` `mutateFlow`
+- Supported actions: add/move/resize/update/delete node, add/delete edge
+- Design constraints enforced in the model schema/prompt: `NODE_SHAPES`, `NODE_COLORS`, layout spacing
+- AI presence via `liveblocks.setPresence` (cursor + `thinking`); cleared when the run ends
+- Status feed via `liveblocks.broadcastEvent` (`AI_STATUS` phases: start / processing / complete / error)
+- Client: `ai-status-feed.tsx` + thinking cues on cursors/avatars; `RoomEvent` typed in `liveblocks.config.ts`
+- Errors publish status and clear presence without leaving the room in a broken presence state
 
 ## Bugfixes (shared projects + sidebar)
 
-- Invite UI: stop calling `.toISOString()` on JSON `createdAt` strings (`hooks/use-share-dialog.ts`)
-- Collaborator email lookups always lowercased (`lib/auth.ts`, `lib/project-access.ts`, collaborators API)
-- Liveblocks ID-token rooms: `updateRoom` grants `room:write` on every auth; invite/remove sync room `usersAccesses`
-- Project sidebar: 3-dot menu `stopPropagation` so rename/delete does not open the canvas
+- currently have no Bugs Or Errors
 
 ## Architecture invariants
 
@@ -72,12 +73,7 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Bugfixes (Liveblocks canvas issues 2–8)
 
-- Delete/Backspace: use Liveblocks `onDelete` (not `type: "remove"` changes — those are no-ops in `@liveblocks/react-flow`); RF `deleteKeyCode={null}`
-- Drop places node centered on cursor; removed React Flow `fitView` auto-zoom on first drop
-- Connection handles stacked above shape with z-index; visible when selected
-- `img.clerk.com` in `next.config.js` `images.remotePatterns`
-- Workspace navbar had no UserButton already (UserButton on presence strip / editor home only)
-- Create project dialog UI polish (`create-project-dialog.tsx`)
+- currently have no Bugs Or Errors
 
 ## Open
 

@@ -16,7 +16,18 @@ declare global {
       };
     };
 
-    RoomEvent: Record<string, never>;
+    /**
+     * Realtime room events. AI design status is broadcast so every
+     * collaborator can follow Ghost AI progress in the status feed.
+     */
+    RoomEvent:
+      | {
+          type: "AI_STATUS";
+          phase: "start" | "processing" | "complete" | "error";
+          message: string;
+          at: number;
+        };
+
     ThreadMetadata: Record<string, never>;
     RoomInfo: Record<string, never>;
   }
