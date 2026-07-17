@@ -45,6 +45,8 @@ import { ShapePanel, type ShapeDragPayload } from "./shape-panel";
 import { CanvasNodeRenderer } from "./canvas-node";
 import { CanvasEdgeRenderer } from "./canvas-edge";
 import { CanvasControls } from "./canvas-controls";
+import { LiveCursors, useCursorPresence } from "./live-cursors";
+import { PresenceAvatars } from "./presence-avatars";
 import { StarterTemplatesModal } from "./starter-templates-modal";
 import {
   cloneTemplateWithFreshIds,
@@ -94,7 +96,7 @@ export function Canvas({
     <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
       <RoomProvider
         id={roomId}
-        initialPresence={{ cursor: null, isThinking: false }}
+        initialPresence={{ cursor: null, thinking: false }}
       >
         <CanvasErrorBoundary>
           <ClientSideSuspense fallback={<CanvasLoading />}>
@@ -185,6 +187,8 @@ function CollaborativeFlow({
 }: CollaborativeFlowProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
+  const { onPointerMove: onCursorMove, onPointerLeave: onCursorLeave } =
+    useCursorPresence();
 
   // `useLiveblocksFlow` returns the synced nodes/edges plus change
   // handlers. With `suspense: true`, `nodes` and `edges` are guaranteed
@@ -337,6 +341,8 @@ function CollaborativeFlow({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onDelete={onDelete}
+        onMouseMove={onCursorMove}
+        onMouseLeave={onCursorLeave}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
@@ -352,6 +358,9 @@ function CollaborativeFlow({
           color="var(--border-subtle)"
         />
       </ReactFlow>
+
+      <LiveCursors />
+      <PresenceAvatars />
 
       {/* Zoom + undo/redo bar (bottom-left); shape palette (bottom-center) */}
       <CanvasControls />

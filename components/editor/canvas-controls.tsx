@@ -48,7 +48,7 @@ export function CanvasControls() {
   }, [reactFlow]);
 
   return (
-    <div className="pointer-events-none fixed bottom-6 left-6 z-50">
+    <div className="pointer-events-none fixed bottom-6 left-6 z-20">
       <div
         className="pointer-events-auto flex items-center gap-1 rounded-full border border-border-default bg-bg-surface/95 px-1.5 py-1.5 shadow-xl backdrop-blur-md"
         role="toolbar"

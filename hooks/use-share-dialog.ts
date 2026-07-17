@@ -70,10 +70,19 @@ export function useShareDialog(projectId: string, isOwner: boolean) {
 
       const { collaborator } = await response.json();
 
+      // API already returns createdAt as an ISO string (JSON has no Date type).
+      // Normalize defensively in case a Date-like value ever appears.
+      const createdAt =
+        typeof collaborator.createdAt === "string"
+          ? collaborator.createdAt
+          : collaborator.createdAt instanceof Date
+            ? collaborator.createdAt.toISOString()
+            : String(collaborator.createdAt ?? new Date().toISOString());
+
       startTransition(() => {
         setCollaborators((current) => [
           ...current,
-          { ...collaborator, createdAt: collaborator.createdAt.toISOString() },
+          { ...collaborator, createdAt },
         ]);
         setInviteEmail("");
       });

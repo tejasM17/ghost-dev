@@ -64,14 +64,20 @@ export async function POST(request: Request) {
   const avatar = clerkUser?.avatarUrl ?? "";
   const color = getUserColor(currentUser.userId);
 
-  // Ensure the room exists. We use ID tokens, so the room must have at
-  // least one access entry — `defaultAccesses: []` would lock everyone
-  // out, and `["room:write"]` would let any token holder join.
-  // Project membership is enforced by step 2 above, so we keep the room
-  // private (empty defaults) and rely on per-user access.
+  // Ensure the room exists, then grant this user write access.
+  // getOrCreateRoom only applies usersAccesses on *create* — if the owner
+  // already created the room, a collaborator would still be locked out
+  // (Liveblocks 4001 / "You have no access to this room"). Always update
+  // after create-or-get so every verified member receives room:write.
+  // Project membership is enforced above; rooms stay private by default.
   try {
     await liveblocks.getOrCreateRoom(roomId, {
       defaultAccesses: [],
+      usersAccesses: {
+        [currentUser.userId]: ["room:write"],
+      },
+    });
+    await liveblocks.updateRoom(roomId, {
       usersAccesses: {
         [currentUser.userId]: ["room:write"],
       },

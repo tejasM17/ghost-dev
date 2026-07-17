@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { UserButton } from "@clerk/nextjs";
 import {
   PanelLeftClose,
   PanelLeftOpen,
-  Share2,
+  Plus,
   X,
   Network,
   Sparkles,
@@ -58,16 +57,16 @@ export function WorkspaceShell({
   // If no project access, show access denied
   if (!project) {
     return (
-      <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-base text-text-primary">
+      <div className="relative h-screen w-full overflow-hidden bg-bg-base text-text-primary">
         <EditorNavbar
           projectName=""
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
           onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
           aiSidebarOpen={isAiSidebarOpen}
-          onShareClick={() => { }}
+          onShareClick={() => {}}
         />
-        <main className="relative flex-1 overflow-hidden">
+        <main className="absolute inset-0 overflow-hidden">
           <ProjectSidebar
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
@@ -86,7 +85,14 @@ export function WorkspaceShell({
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-bg-base text-text-primary">
+    <div className="relative h-screen w-full overflow-hidden bg-bg-base text-text-primary">
+      <div className="absolute inset-0">
+        <Canvas
+          roomId={currentRoomId}
+          templatesOpen={templatesOpen}
+          onTemplatesOpenChange={setTemplatesOpen}
+        />
+      </div>
       <EditorNavbar
         projectName={project.name}
         isSidebarOpen={isSidebarOpen}
@@ -96,26 +102,17 @@ export function WorkspaceShell({
         onShareClick={shareDialog.onOpenChange}
         onTemplatesClick={() => setTemplatesOpen(true)}
       />
-      <main className="relative flex-1 overflow-hidden">
-        <div className="absolute inset-0">
-          <Canvas
-            roomId={currentRoomId}
-            templatesOpen={templatesOpen}
-            onTemplatesOpenChange={setTemplatesOpen}
-          />
-        </div>
-        <ProjectSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          ownedProjects={ownedProjects}
-          sharedProjects={sharedProjects}
-          currentRoomId={currentRoomId}
-        />
-        <AiSidebar
-          isOpen={isAiSidebarOpen}
-          onClose={() => setIsAiSidebarOpen(false)}
-        />
-      </main>
+      <ProjectSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        ownedProjects={ownedProjects}
+        sharedProjects={sharedProjects}
+        currentRoomId={currentRoomId}
+      />
+      <AiSidebar
+        isOpen={isAiSidebarOpen}
+        onClose={() => setIsAiSidebarOpen(false)}
+      />
 
       {/* Share Dialog */}
       <ShareDialog
@@ -158,8 +155,8 @@ function EditorNavbar({
   onTemplatesClick,
 }: EditorNavbarProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-bg-surface px-4">
-      <div className="flex items-center gap-3">
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 shrink-0 items-center justify-between px-3 pt-3">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-border-default bg-bg-surface/95 px-2 py-1.5 shadow-xl backdrop-blur-md">
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -173,18 +170,23 @@ function EditorNavbar({
             <PanelLeftOpen className="h-5 w-5" />
           )}
         </button>
-        <div className="flex flex-col">
+        <div className="flex min-w-0 flex-col pr-2">
           {projectName ? (
-            <span className="text-sm font-semibold text-text-primary">
+            <span className="truncate text-sm font-semibold text-text-primary">
               {projectName}
             </span>
           ) : (
-            <span className="text-sm font-semibold text-text-primary">Ghost Room</span>
+            <span className="text-sm font-semibold text-text-primary">
+              Ghost Room
+            </span>
           )}
-          <span className="text-[11px] font-medium text-text-faint">Workspace</span>
+          <span className="text-[11px] font-medium text-text-faint">
+            Workspace
+          </span>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      {/* Right actions only — presence avatars + UserButton live on the canvas */}
+      <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-border-default bg-bg-surface/95 px-1.5 py-1.5 shadow-xl backdrop-blur-md">
         {onTemplatesClick ? (
           <Button
             type="button"
@@ -212,7 +214,7 @@ function EditorNavbar({
           variant="ghost"
           size="sm"
           className={cn(
-            "gap-2 bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20",
+            "gap-2 bg-accent-primary/10 text-accent-primary hover:bg-bg-elevated hover:text-accent-primary",
             aiSidebarOpen && "bg-accent-primary/20",
           )}
           onClick={onToggleAiSidebar}
@@ -220,17 +222,6 @@ function EditorNavbar({
           <Sparkles className="h-4 w-4" />
           AI
         </Button>
-        <UserButton
-          appearance={{
-            elements: {
-              userButtonBox: "h-9 w-9",
-              userButtonTrigger:
-                "h-9 w-9 rounded-full ring-1 ring-border-default hover:ring-border-subtle transition-all overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent-primary/50",
-              userButtonAvatarBox: "h-full w-full rounded-full",
-              userButtonAvatarImage: "h-full w-full object-cover",
-            },
-          }}
-        />
       </div>
     </header>
   );
@@ -270,8 +261,10 @@ function ProjectSidebar({
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "pointer-events-none fixed left-0 top-14 z-40 flex h-[calc(100vh-3.5rem)] w-80 flex-col border-r border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-[101%]",
+          "pointer-events-none fixed left-3 top-16 z-40 flex h-[calc(100vh-5rem)] w-80 flex-col overflow-hidden rounded-2xl border border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
+          isOpen
+            ? "translate-x-0 pointer-events-auto"
+            : "-translate-x-[calc(100%+1.5rem)]",
         )}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4">
@@ -332,9 +325,9 @@ function ProjectSidebar({
             className="w-full"
             size="default"
             // Create project not wired yet
-            onClick={() => { }}
+            onClick={() => {}}
           >
-            <Share2 className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
             New Project
           </Button>
         </div>
@@ -432,8 +425,10 @@ function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "pointer-events-none fixed right-0 top-14 z-40 flex h-[calc(100vh-3.5rem)] w-80 flex-col border-l border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full",
+          "pointer-events-none fixed right-3 top-16 z-40 flex h-[calc(100vh-5rem)] w-80 flex-col overflow-hidden rounded-2xl border border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
+          isOpen
+            ? "translate-x-0 pointer-events-auto"
+            : "translate-x-[calc(100%+1.5rem)]",
         )}
       >
         {/* Header */}

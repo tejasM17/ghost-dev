@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 18** — completed
-- Next: feature 19 (TBD)
+- **Feature 19** — Fixing Issues
+- Next: feature 20 (TBD)
 
 ## Stack (quick)
 
@@ -18,7 +18,7 @@ Keep this file short. Read feature specs + code for detail.
 | Canvas | Liveblocks + React Flow (`@liveblocks/react-flow`) |
 | Types | `types/canvas.ts` — `CanvasNode` / `CanvasEdge` |
 
-## Done (features 01–18)
+## Done (features 01–19)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -40,16 +40,23 @@ Keep this file short. Read feature specs + code for detail.
 | 16 | Edge behavior | `canvas-edge.tsx` — smooth-step, arrows, labels |
 | 17 | Canvas ergonomics | `canvas-controls.tsx`, `hooks/useKeyboardShortcuts.ts` |
 | 18 | Starter templates | `starter-templates.ts`, `starter-templates-modal.tsx` |
+| 19 | Presence avatars & cursors | `presence-avatars.tsx`, `live-cursors.tsx`, `liveblocks.config.ts` |
 
-## Feature 18 (current)
+## Feature 19 (current)
 
-- Built-in templates: Microservices, CI/CD Pipeline, Event-Driven System
-- Template data uses shared `CanvasNode` / `CanvasEdge` + `NODE_COLORS` palette
-- Import modal: card grid with lightweight SVG previews (no React Flow)
-- Navbar **Templates** button opens modal
-- Import clears existing nodes/edges first, then adds template (replace, not merge)
-- Fresh IDs on import; `fitView` after load; stays in Liveblocks collaborative state
-- No template saving / custom templates / server persistence
+- Presence type: `cursor` + `thinking` in `liveblocks.config.ts`
+- Canvas-only collaborator avatars (exclude Clerk current user) + Clerk `UserButton`
+- Overlapping stack (max 5) with `+N` overflow; initials fallback; divider when collabs exist
+- Live cursors for other participants via presence + React Flow mouse move/leave
+- Workspace floating top bar / sidebars; zoom controls sit under open project sidebar (`z-20`)
+- Editor home navbar has no presence stack (UserButton remains on home)
+
+## Bugfixes (shared projects + sidebar)
+
+- Invite UI: stop calling `.toISOString()` on JSON `createdAt` strings (`hooks/use-share-dialog.ts`)
+- Collaborator email lookups always lowercased (`lib/auth.ts`, `lib/project-access.ts`, collaborators API)
+- Liveblocks ID-token rooms: `updateRoom` grants `room:write` on every auth; invite/remove sync room `usersAccesses`
+- Project sidebar: 3-dot menu `stopPropagation` so rename/delete does not open the canvas
 
 ## Architecture invariants
 

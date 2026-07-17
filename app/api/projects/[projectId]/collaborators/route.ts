@@ -50,7 +50,11 @@ export async function GET(
   const primaryEmail = user.emailAddresses.find(
     (e) => e.id === user.primaryEmailAddressId
   );
-  const userEmail = primaryEmail?.emailAddress ?? "";
+  const userEmail = (
+    primaryEmail?.emailAddress ??
+    user.emailAddresses[0]?.emailAddress ??
+    ""
+  ).toLowerCase();
 
   const actualCollaborator = await prisma.projectCollaborator.findUnique({
     where: {
@@ -123,13 +127,16 @@ export async function POST(
     body = null;
   }
 
-  const email = readEmail(body);
-  if (!email) {
+  const rawEmail = readEmail(body);
+  if (!rawEmail) {
     return NextResponse.json(
       { error: "Valid email is required" },
       { status: 400 },
     );
   }
+
+  // Collaborator emails are always stored lowercased for consistent lookups.
+  const email = rawEmail.toLowerCase();
 
   // Check if already a collaborator
   const existing = await prisma.projectCollaborator.findUnique({
@@ -155,7 +162,7 @@ export async function POST(
   const ownerEmail = owner.emailAddresses.find(
     (e) => e.id === owner.primaryEmailAddressId
   );
-  if (ownerEmail?.emailAddress.toLowerCase() === email.toLowerCase()) {
+  if (ownerEmail?.emailAddress.toLowerCase() === email) {
     return NextResponse.json(
       { error: "Cannot invite the project owner" },
       { status: 400 },
@@ -165,13 +172,46 @@ export async function POST(
   const collaborator = await prisma.projectCollaborator.create({
     data: {
       projectId: project.id,
-      email: email.toLowerCase(),
+      email,
     },
   });
 
+  // If the invitee already has a Clerk account, grant Liveblocks room
+  // access immediately so they can open the project without waiting for
+  // a subsequent auth-endpoint updateRoom call. Auth still re-grants
+  // access on every join (covers users who sign up after the invite).
+  try {
+    const { liveblocks } = await import("@/lib/liveblocks");
+    const inviteeList = await clerk.users.getUserList({
+      emailAddress: [email],
+      limit: 1,
+    });
+    const inviteeData = (inviteeList as unknown as { data: { id: string }[] })
+      .data;
+    const inviteeId = inviteeData?.[0]?.id;
+    if (inviteeId) {
+      await liveblocks.getOrCreateRoom(project.id, {
+        defaultAccesses: [],
+        usersAccesses: {
+          [userId]: ["room:write"],
+          [inviteeId]: ["room:write"],
+        },
+      });
+      await liveblocks.updateRoom(project.id, {
+        usersAccesses: {
+          [inviteeId]: ["room:write"],
+        },
+      });
+    }
+  } catch (error) {
+    // Membership is already in Postgres; Liveblocks access will be
+    // granted when the collaborator hits /api/liveblocks-auth.
+    console.error("Failed to grant Liveblocks access on invite", error);
+  }
+
   // Try to get Clerk user data for the response
   const { getClerkUserByEmail } = await import("@/lib/auth");
-  const clerkUser = await getClerkUserByEmail(email.toLowerCase());
+  const clerkUser = await getClerkUserByEmail(email);
 
   return NextResponse.json(
     {

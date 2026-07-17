@@ -38,7 +38,7 @@ export async function DELETE(
   // Find the collaborator
   const collaborator = await prisma.projectCollaborator.findUnique({
     where: { id: collaboratorId },
-    select: { id: true, projectId: true },
+    select: { id: true, projectId: true, email: true },
   });
 
   if (!collaborator || collaborator.projectId !== projectId) {
@@ -48,6 +48,30 @@ export async function DELETE(
   await prisma.projectCollaborator.delete({
     where: { id: collaboratorId },
   });
+
+  // Revoke Liveblocks room access for the removed collaborator when we
+  // can resolve their Clerk user ID. Best-effort — DB membership is source
+  // of truth and auth will refuse tokens without a collaborator row.
+  try {
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const { liveblocks } = await import("@/lib/liveblocks");
+    const clerk = await clerkClient();
+    const list = await clerk.users.getUserList({
+      emailAddress: [collaborator.email.toLowerCase()],
+      limit: 1,
+    });
+    const removedId = (list as unknown as { data: { id: string }[] }).data?.[0]
+      ?.id;
+    if (removedId) {
+      await liveblocks.updateRoom(project.id, {
+        usersAccesses: {
+          [removedId]: null,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Failed to revoke Liveblocks access on remove", error);
+  }
 
   return new NextResponse(null, { status: 204 });
 }

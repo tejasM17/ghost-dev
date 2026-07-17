@@ -48,8 +48,8 @@ export function ProjectSidebar({
       <aside
         aria-hidden={!isOpen}
         className={cn(
-          "pointer-events-none fixed left-0 top-0 z-40 flex h-full w-80 flex-col border-r border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full",
+          "pointer-events-none fixed left-3 top-3 z-40 flex h-[calc(100vh-1.5rem)] w-80 flex-col overflow-hidden rounded-2xl border border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
+          isOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-[calc(100%+1.5rem)]",
         )}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4">
@@ -230,13 +230,23 @@ function ProjectRow({
         </span>
       </div>
       {isOwned ? (
-        <div ref={menuRef} className="relative">
+        <div
+          ref={menuRef}
+          className="relative"
+          // Keep menu interactions from bubbling to the row open handler.
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
           <button
             type="button"
             aria-label={`Open actions for ${project.name}`}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              setMenuOpen((open) => !open);
+            }}
             className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-subtle"
           >
             <MoreHorizontal className="h-4 w-4" />
@@ -249,7 +259,8 @@ function ProjectRow({
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   setMenuOpen(false);
                   onRename(project.id);
                 }}
@@ -261,7 +272,8 @@ function ProjectRow({
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   setMenuOpen(false);
                   onDelete(project.id);
                 }}

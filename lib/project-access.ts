@@ -28,7 +28,11 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     (email) => email.id === user.primaryEmailAddressId
   );
 
-  const email = primaryEmail?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? "";
+  const email = (
+    primaryEmail?.emailAddress ??
+    user.emailAddresses[0]?.emailAddress ??
+    ""
+  ).toLowerCase();
 
   return {
     userId,
@@ -65,12 +69,12 @@ export async function getProjectWithAccess(projectId: string): Promise<{
     return project;
   }
 
-  // Check if user is a collaborator (by email)
+  // Check if user is a collaborator (by email). Emails are stored lowercased.
   const collaborator = await prisma.projectCollaborator.findUnique({
     where: {
       projectId_email: {
         projectId: project.id,
-        email: currentUser.email,
+        email: currentUser.email.toLowerCase(),
       },
     },
   });
