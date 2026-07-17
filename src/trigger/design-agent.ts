@@ -13,6 +13,11 @@ import {
   type NodeColorName,
   type NodeShape,
 } from "@/types/canvas";
+import {
+  AI_STATUS_FEED_ID,
+  type AiStatusFeedPayload,
+  type AiStatusPhase,
+} from "@/types/tasks";
 
 /** Stable Liveblocks user id for the design agent presence. */
 const AI_USER_ID = "ghost-ai";
@@ -110,8 +115,6 @@ const designPlanSchema = z.object({
 
 type DesignAction = z.infer<typeof designActionSchema>;
 type DesignPlan = z.infer<typeof designPlanSchema>;
-
-type AiStatusPhase = "start" | "processing" | "complete" | "error";
 
 /**
  * Design generation task.
@@ -216,20 +219,42 @@ export const designAgentTask = task({
 });
 
 /**
- * Broadcast a status message to every client in the Liveblocks room.
- * Clients render these via the shared AI status feed.
+ * Publish a status message to the shared Liveblocks `ai-status-feed`.
+ * Clients subscribe via `useFeedMessages` and show the latest entry.
  */
 async function publishStatus(
   roomId: string,
   phase: AiStatusPhase,
   message: string,
 ): Promise<void> {
-  await liveblocks.broadcastEvent(roomId, {
-    type: "AI_STATUS",
+  await ensureAiStatusFeed(roomId);
+
+  const data: AiStatusFeedPayload = {
     phase,
     message,
+    text: message,
     at: Date.now(),
+    kind: "design",
+  };
+
+  await liveblocks.createFeedMessage({
+    roomId,
+    feedId: AI_STATUS_FEED_ID,
+    // JsonObject requires an index signature; payload is a plain object.
+    data: { ...data },
   });
+}
+
+/** Create the AI status feed once per room (ignore if it already exists). */
+async function ensureAiStatusFeed(roomId: string): Promise<void> {
+  try {
+    await liveblocks.createFeed({
+      roomId,
+      feedId: AI_STATUS_FEED_ID,
+    });
+  } catch {
+    // Feed already exists or concurrent create — safe to continue.
+  }
 }
 
 /**

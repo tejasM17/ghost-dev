@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 23** — Completed
-- Next: feature 24 (TBD)
+- **Feature 25** — Completed
+- Next: feature 26 (TBD)
 
 ## Stack (quick)
 
@@ -18,9 +18,9 @@ Keep this file short. Read feature specs + code for detail.
 | Canvas | Liveblocks + React Flow (`@liveblocks/react-flow`) |
 | Blob | Vercel Blob (`@vercel/blob`) — canvas JSON snapshots |
 | Jobs | Trigger.dev (`src/trigger/`, `@trigger.dev/sdk`) |
-| Types | `types/canvas.ts` — `CanvasNode` / `CanvasEdge` |
+| Types | `types/canvas.ts`, `types/tasks.ts` (AI status + chat feed schemas) |
 
-## Done (features 01–23)
+## Done (features 01–25)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -46,21 +46,24 @@ Keep this file short. Read feature specs + code for detail.
 | 20 | AI sidebar shell | `ai-sidebar.tsx`, wired from `workspace-shell.tsx` |
 | 21 | Canvas autosave | `PUT/GET /api/projects/[projectId]/canvas`, `use-canvas-autosave`, `use-canvas-load` |
 | 22 | Design agent API | `POST /api/ai/design`, `POST /api/ai/design/token`, `TaskRun`, `src/trigger/design-agent.ts` |
-| 23 | Design agent logic | Gemini plan → `mutateFlow` canvas writes, AI presence + `AI_STATUS` feed |
+| 23 | Design agent logic | Gemini plan → `mutateFlow` canvas writes, AI presence + status feed |
+| 24 | AI presence state | Liveblocks feed `ai-status-feed`, sidebar thinking UI, cursor spinners |
+| 25 | Sidebar chat feed | Liveblocks feed `ai-chat`, Zod validation, send via sidebar input |
 
-## Feature 23 (current)
+## Feature 25 (current)
 
-- `src/trigger/design-agent.ts` — full agent: Gemini (`@ai-sdk/google` + `generateObject`) plans canvas actions, applies them via `@liveblocks/react-flow/node` `mutateFlow`
-- Supported actions: add/move/resize/update/delete node, add/delete edge
-- Design constraints enforced in the model schema/prompt: `NODE_SHAPES`, `NODE_COLORS`, layout spacing
-- AI presence via `liveblocks.setPresence` (cursor + `thinking`); cleared when the run ends
-- Status feed via `liveblocks.broadcastEvent` (`AI_STATUS` phases: start / processing / complete / error)
-- Client: `ai-status-feed.tsx` + thinking cues on cursors/avatars; `RoomEvent` typed in `liveblocks.config.ts`
-- Errors publish status and clear presence without leaving the room in a broken presence state
+- `types/tasks.ts` — `AI_CHAT_FEED_ID`, `aiChatFeedMessageSchema` / `parseAiChatFeedPayload` (sender, role, content, timestamp)
+- Liveblocks feed id `ai-chat` (room-scoped; separate from `ai-status-feed`)
+- `ai-chat-feed.tsx` — ensure feed, non-suspense `useFeedMessages`, `useCreateFeedMessage` send
+- `ai-sidebar.tsx` — subscribe/render chat (sender, time, content); clear input on success; send error line
+- `ai-status-feed.tsx` — switched to non-suspense feed hooks (avoids timeout crash)
+- `POST /api/liveblocks-auth` — ensures `ai-status-feed` + `ai-chat` exist before clients connect
+- `liveblocks.config.ts` — `FeedMessageData` union of status + chat payloads
+- Scope: collaborative chat only (no AI replies / design task triggers)
 
 ## Bugfixes (shared projects + sidebar)
 
-- currently have no Bugs Or Errors
+- Collaborator "Feed messages fetch timeout" at `AiSidebar` / `RoomAwareArchitectTab`: ensure feeds on auth + non-suspense `useFeedMessages` so errors do not crash the tree
 
 ## Architecture invariants
 
@@ -70,6 +73,7 @@ Keep this file short. Read feature specs + code for detail.
 - UI tokens only (`bg-base`, `text-copy-*`, etc.) — no raw color utilities
 - Canvas types stay shared: `types/canvas.ts`
 - Do not invent features — follow `context/feature-specs/*` and user context
+- Chat feed (`ai-chat`) stays separate from status feed (`ai-status-feed`)
 
 ## Bugfixes (Liveblocks canvas issues 2–8)
 

@@ -1,64 +1,82 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useEventListener } from "@liveblocks/react/suspense";
+import { useEffect, useMemo } from "react";
+import {
+  useCreateFeed,
+  useFeedMessages,
+  useOthers,
+} from "@liveblocks/react";
 import { AlertCircle, Bot, CheckCircle2, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-
-interface StatusEntry {
-  id: string;
-  phase: "start" | "processing" | "complete" | "error";
-  message: string;
-  at: number;
-}
-
-const MAX_VISIBLE = 4;
-const AUTO_DISMISS_MS = 12_000;
+import {
+  AI_STATUS_FEED_ID,
+  aiStatusDisplayText,
+  isAiGenerationActive,
+  parseAiStatusFeedPayload,
+  type AiStatusFeedPayload,
+} from "@/types/tasks";
 
 /**
- * Shared AI status feed: listens for `AI_STATUS` room events broadcast by
- * the design-agent task and shows progress to all participants.
+ * Ensures the shared `ai-status-feed` exists in the current room.
+ * Safe to call multiple times — create is idempotent from the UI side.
  */
-export function AiStatusFeed() {
-  const [entries, setEntries] = useState<StatusEntry[]>([]);
-
-  useEventListener(({ event }) => {
-    if (!event || typeof event !== "object") return;
-    if (!("type" in event) || event.type !== "AI_STATUS") return;
-
-    const { phase, message, at } = event;
-    if (
-      typeof phase !== "string" ||
-      typeof message !== "string" ||
-      typeof at !== "number"
-    ) {
-      return;
-    }
-
-    const id = `${at}-${Math.random().toString(36).slice(2, 8)}`;
-    setEntries((prev) => {
-      const next = [...prev, { id, phase, message, at }];
-      return next.slice(-MAX_VISIBLE);
-    });
-  });
+export function useEnsureAiStatusFeed(): void {
+  const createFeed = useCreateFeed();
 
   useEffect(() => {
-    if (entries.length === 0) return;
+    void createFeed(AI_STATUS_FEED_ID).catch(() => {
+      // Feed may already exist; ignore create races.
+    });
+  }, [createFeed]);
+}
 
-    const latest = entries[entries.length - 1];
-    if (latest.phase !== "complete" && latest.phase !== "error") {
-      return;
+/**
+ * Latest validated AI status from the Liveblocks `ai-status-feed`, plus
+ * whether any participant (including Ghost AI) currently has `thinking`.
+ *
+ * Uses non-suspense `useFeedMessages` so a feed fetch timeout (common when
+ * collaborators join before the feed is ready) does not crash the workspace.
+ */
+export function useAiActivityState(): {
+  latest: AiStatusFeedPayload | null;
+  isGenerating: boolean;
+  displayText: string | null;
+} {
+  useEnsureAiStatusFeed();
+
+  const { messages } = useFeedMessages(AI_STATUS_FEED_ID);
+  const others = useOthers();
+
+  const latest = useMemo(() => {
+    if (!messages || messages.length === 0) return null;
+
+    // Show only the most recent valid status message (spec: no full history).
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const parsed = parseAiStatusFeedPayload(messages[i]?.data);
+      if (parsed) return parsed;
     }
+    return null;
+  }, [messages]);
 
-    const timer = window.setTimeout(() => {
-      setEntries((prev) => prev.filter((e) => e.id !== latest.id));
-    }, AUTO_DISMISS_MS);
+  const someoneThinking = others.some(
+    (other) => other.presence.thinking === true,
+  );
 
-    return () => window.clearTimeout(timer);
-  }, [entries]);
+  const isGenerating = isAiGenerationActive(latest) || someoneThinking;
+  const displayText = latest ? aiStatusDisplayText(latest) : null;
 
-  if (entries.length === 0) return null;
+  return { latest, isGenerating, displayText };
+}
+
+/**
+ * Compact canvas toast for the latest AI status message (shared room feed).
+ * Full history is intentionally not rendered.
+ */
+export function AiStatusFeed() {
+  const { latest, displayText } = useAiActivityState();
+
+  if (!latest || !displayText) return null;
 
   return (
     <div
@@ -66,17 +84,21 @@ export function AiStatusFeed() {
       aria-live="polite"
       aria-label="AI design status"
     >
-      {entries.map((entry) => (
-        <StatusCard key={entry.id} entry={entry} />
-      ))}
+      <StatusCard phase={latest.phase} text={displayText} />
     </div>
   );
 }
 
-function StatusCard({ entry }: { entry: StatusEntry }) {
-  const isError = entry.phase === "error";
-  const isComplete = entry.phase === "complete";
-  const isBusy = entry.phase === "start" || entry.phase === "processing";
+function StatusCard({
+  phase,
+  text,
+}: {
+  phase: AiStatusFeedPayload["phase"];
+  text: string;
+}) {
+  const isError = phase === "error";
+  const isComplete = phase === "complete";
+  const isBusy = phase === "start" || phase === "processing";
 
   return (
     <div
@@ -102,7 +124,7 @@ function StatusCard({ entry }: { entry: StatusEntry }) {
         <p className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
           Ghost AI
         </p>
-        <p className="text-sm text-text-primary">{entry.message}</p>
+        <p className="text-sm text-text-primary">{text}</p>
       </div>
     </div>
   );

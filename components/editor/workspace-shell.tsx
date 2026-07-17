@@ -23,7 +23,8 @@ import type { ProjectData } from "@/hooks/use-project-actions";
 import type { CanvasSaveStatus } from "@/hooks/use-canvas-autosave";
 import { AccessDenied } from "@/components/editor/access-denied";
 import { AiSidebar } from "@/components/editor/ai-sidebar";
-import { Canvas } from "@/components/editor/canvas";
+import { Canvas, CanvasLoading } from "@/components/editor/canvas";
+import { LiveblocksRoom } from "@/components/editor/liveblocks-room";
 import { ShareDialog } from "@/components/editor/share-dialog";
 import { useShareDialog } from "@/hooks/use-share-dialog";
 
@@ -109,15 +110,30 @@ export function WorkspaceShell({
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-bg-base text-text-primary">
-      <div className="absolute inset-0">
-        <Canvas
-          roomId={currentRoomId}
-          templatesOpen={templatesOpen}
-          onTemplatesOpenChange={setTemplatesOpen}
-          onSaveStatusChange={handleSaveStatusChange}
-          onSaveReady={handleSaveReady}
+      {/* Shared Liveblocks room so canvas + AI sidebar share presence and feeds */}
+      <LiveblocksRoom
+        roomId={currentRoomId}
+        fallback={
+          <div className="absolute inset-0">
+            <CanvasLoading />
+          </div>
+        }
+      >
+        <div className="absolute inset-0">
+          <Canvas
+            roomId={currentRoomId}
+            templatesOpen={templatesOpen}
+            onTemplatesOpenChange={setTemplatesOpen}
+            onSaveStatusChange={handleSaveStatusChange}
+            onSaveReady={handleSaveReady}
+          />
+        </div>
+        <AiSidebar
+          isOpen={isAiSidebarOpen}
+          onClose={() => setIsAiSidebarOpen(false)}
+          roomConnected
         />
-      </div>
+      </LiveblocksRoom>
       <EditorNavbar
         projectName={project.name}
         isSidebarOpen={isSidebarOpen}
@@ -136,10 +152,6 @@ export function WorkspaceShell({
         ownedProjects={ownedProjects}
         sharedProjects={sharedProjects}
         currentRoomId={currentRoomId}
-      />
-      <AiSidebar
-        isOpen={isAiSidebarOpen}
-        onClose={() => setIsAiSidebarOpen(false)}
       />
 
       {/* Share Dialog */}

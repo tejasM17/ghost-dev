@@ -12,10 +12,16 @@ import {
   Bot,
   Download,
   FileText,
+  Loader2,
   Send,
   X,
 } from "lucide-react";
 
+import {
+  useAiChatFeed,
+  type AiChatMessage,
+} from "@/components/editor/ai-chat-feed";
+import { useAiActivityState } from "@/components/editor/ai-status-feed";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,23 +34,25 @@ const STARTER_PROMPTS = [
   "Build a CI/CD pipeline",
 ] as const;
 
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
-
 interface AiSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * When true, subscribe to shared Liveblocks AI status + chat (room required).
+   * When false (e.g. access-denied shell), render local shell only.
+   */
+  roomConnected?: boolean;
 }
 
 /**
- * Floating AI Workspace sidebar. Open/close is controlled by the parent;
- * this component owns only the internal chat UI shell (no backend / Liveblocks).
+ * Floating AI Workspace sidebar. Open/close is controlled by the parent.
+ * Collaborative chat uses Liveblocks `ai-chat`; generation is not triggered here.
  */
-export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function AiSidebar({
+  isOpen,
+  onClose,
+  roomConnected = false,
+}: AiSidebarProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -59,28 +67,6 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
   useEffect(() => {
     resizeTextarea();
   }, [input, resizeTextarea]);
-
-  const handleSend = useCallback(() => {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `user-${Date.now()}`,
-        role: "user",
-        content: trimmed,
-      },
-    ]);
-    setInput("");
-  }, [input]);
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      handleSend();
-    }
-  };
 
   const applyStarter = (prompt: string) => {
     setInput(prompt);
@@ -164,15 +150,28 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
             value="architect"
             className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
           >
-            <ArchitectTab
-              messages={messages}
-              input={input}
-              textareaRef={textareaRef}
-              onInputChange={setInput}
-              onKeyDown={handleKeyDown}
-              onSend={handleSend}
-              onStarter={applyStarter}
-            />
+            {roomConnected ? (
+              <RoomAwareArchitectTab
+                input={input}
+                textareaRef={textareaRef}
+                onInputChange={setInput}
+                onStarter={applyStarter}
+              />
+            ) : (
+              <ArchitectTab
+                messages={[]}
+                input={input}
+                textareaRef={textareaRef}
+                onInputChange={setInput}
+                onKeyDown={() => {}}
+                onSend={() => {}}
+                onStarter={applyStarter}
+                isGenerating={false}
+                statusText={null}
+                sendError={null}
+                isSending={false}
+              />
+            )}
           </TabsContent>
 
           <TabsContent
@@ -187,14 +186,77 @@ export function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
   );
 }
 
+/**
+ * Architect tab that reads shared Liveblocks AI status + collaborative chat.
+ * Must render under RoomProvider.
+ */
+function RoomAwareArchitectTab({
+  input,
+  textareaRef,
+  onInputChange,
+  onStarter,
+}: {
+  input: string;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  onInputChange: (value: string) => void;
+  onStarter: (prompt: string) => void;
+}) {
+  const { isGenerating, displayText } = useAiActivityState();
+  const {
+    messages,
+    sendMessage,
+    sendError,
+    isSending,
+  } = useAiChatFeed();
+
+  const handleSend = useCallback(async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isGenerating || isSending) return;
+
+    const ok = await sendMessage(trimmed);
+    if (ok) {
+      onInputChange("");
+    }
+  }, [input, isGenerating, isSending, onInputChange, sendMessage]);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void handleSend();
+    }
+  };
+
+  return (
+    <ArchitectTab
+      messages={messages}
+      input={input}
+      textareaRef={textareaRef}
+      onInputChange={onInputChange}
+      onKeyDown={handleKeyDown}
+      onSend={() => {
+        void handleSend();
+      }}
+      onStarter={onStarter}
+      isGenerating={isGenerating}
+      statusText={displayText}
+      sendError={sendError}
+      isSending={isSending}
+    />
+  );
+}
+
 interface ArchitectTabProps {
-  messages: ChatMessage[];
+  messages: AiChatMessage[];
   input: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   onInputChange: (value: string) => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onSend: () => void;
   onStarter: (prompt: string) => void;
+  isGenerating: boolean;
+  statusText: string | null;
+  sendError: string | null;
+  isSending: boolean;
 }
 
 function ArchitectTab({
@@ -205,34 +267,67 @@ function ArchitectTab({
   onKeyDown,
   onSend,
   onStarter,
+  isGenerating,
+  statusText,
+  sendError,
+  isSending,
 }: ArchitectTabProps) {
   const isEmpty = messages.length === 0;
+  const canSend = Boolean(input.trim()) && !isGenerating && !isSending;
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   return (
     <>
+      {/* Shared AI activity indicator — does not dim the rest of the sidebar */}
+      {isGenerating || statusText ? (
+        <div
+          className="flex shrink-0 items-center gap-2 border-b border-border-default bg-bg-subtle/80 px-4 py-2"
+          aria-live="polite"
+          aria-label="AI status"
+        >
+          {isGenerating ? (
+            <Loader2
+              className="h-3.5 w-3.5 shrink-0 animate-spin text-accent-ai-text"
+              aria-hidden
+            />
+          ) : (
+            <Bot className="h-3.5 w-3.5 shrink-0 text-accent-ai-text" aria-hidden />
+          )}
+          <p className="min-w-0 truncate text-xs text-text-secondary">
+            {statusText ?? (isGenerating ? "Ghost AI is working…" : "")}
+          </p>
+        </div>
+      ) : null}
+
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-3 p-4">
           {isEmpty ? (
-            <EmptyArchitectState onStarter={onStarter} />
+            <EmptyArchitectState
+              onStarter={onStarter}
+              disabled={isGenerating}
+            />
           ) : (
             messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  "max-w-[90%] rounded-2xl px-3 py-2 text-sm leading-relaxed",
-                  message.role === "user"
-                    ? "ml-auto border-2 border-accent-primary/50 bg-accent-primary-dim text-text-primary"
-                    : "mr-auto border border-border-default bg-bg-elevated text-accent-ai-text",
-                )}
-              >
-                {message.content}
-              </div>
+              <ChatBubble key={message.id} message={message} />
             ))
           )}
+          <div ref={bottomRef} />
         </div>
       </ScrollArea>
 
       <div className="shrink-0 border-t border-border-default p-3">
+        {sendError ? (
+          <p
+            className="mb-2 px-0.5 text-[11px] text-state-error"
+            role="alert"
+          >
+            {sendError}
+          </p>
+        ) : null}
         <div className="flex items-end gap-2">
           <Textarea
             ref={textareaRef}
@@ -241,31 +336,90 @@ function ArchitectTab({
             onKeyDown={onKeyDown}
             placeholder="Describe the architecture you want…"
             rows={2}
-            className="min-h-[72px] max-h-[160px] flex-1 resize-none overflow-y-auto rounded-xl border-border-default bg-bg-elevated px-3 py-2.5 text-sm text-text-primary placeholder:text-text-faint focus-visible:ring-accent-ai"
+            disabled={isGenerating}
+            aria-disabled={isGenerating}
+            className="min-h-[72px] max-h-[160px] flex-1 resize-none overflow-y-auto rounded-xl border-border-default bg-bg-elevated px-3 py-2.5 text-sm text-text-primary placeholder:text-text-faint focus-visible:ring-accent-ai disabled:cursor-not-allowed disabled:opacity-60"
           />
           <Button
             type="button"
             size="icon"
             onClick={onSend}
-            disabled={!input.trim()}
-            aria-label="Send message"
+            disabled={!canSend}
+            aria-label={
+              isGenerating
+                ? "Generating…"
+                : isSending
+                  ? "Sending…"
+                  : "Send message"
+            }
+            aria-busy={isGenerating || isSending}
             className="h-10 w-10 shrink-0 rounded-xl bg-accent-ai text-white hover:bg-accent-ai/90 disabled:opacity-40"
           >
-            <Send className="h-4 w-4" />
+            {isGenerating || isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
         <p className="mt-1.5 px-0.5 text-[10px] text-text-faint">
-          Enter to send · Shift+Enter for newline
+          {isGenerating
+            ? "Generation in progress — chat input paused"
+            : "Enter to send · Shift+Enter for newline"}
         </p>
       </div>
     </>
   );
 }
 
+function ChatBubble({ message }: { message: AiChatMessage }) {
+  const isUser = message.role === "user";
+  const timeLabel = formatChatTime(message.timestamp);
+
+  return (
+    <div
+      className={cn(
+        "flex max-w-[90%] flex-col gap-1",
+        isUser ? "ml-auto items-end" : "mr-auto items-start",
+      )}
+    >
+      <div className="flex items-baseline gap-1.5 px-0.5">
+        <span className="text-[11px] font-medium text-text-secondary">
+          {message.sender}
+        </span>
+        <span className="text-[10px] text-text-faint">{timeLabel}</span>
+      </div>
+      <div
+        className={cn(
+          "rounded-2xl px-3 py-2 text-sm leading-relaxed",
+          isUser
+            ? "border-2 border-accent-primary/50 bg-accent-primary-dim text-text-primary"
+            : "border border-border-default bg-bg-elevated text-accent-ai-text",
+        )}
+      >
+        {message.content}
+      </div>
+    </div>
+  );
+}
+
+function formatChatTime(timestamp: number): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(timestamp));
+  } catch {
+    return "";
+  }
+}
+
 function EmptyArchitectState({
   onStarter,
+  disabled = false,
 }: {
   onStarter: (prompt: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col items-center gap-4 py-6 text-center">
@@ -278,6 +432,7 @@ function EmptyArchitectState({
         </p>
         <p className="text-xs leading-relaxed text-text-muted">
           Describe a system and Ghost AI will help map it onto the canvas.
+          Room members share this chat in real time.
         </p>
       </div>
       <div className="flex w-full flex-col gap-2">
@@ -285,8 +440,9 @@ function EmptyArchitectState({
           <button
             key={prompt}
             type="button"
+            disabled={disabled}
             onClick={() => onStarter(prompt)}
-            className="rounded-full bg-bg-subtle px-3 py-2 text-left text-xs text-accent-ai-text transition-colors hover:bg-bg-elevated focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-subtle"
+            className="rounded-full bg-bg-subtle px-3 py-2 text-left text-xs text-accent-ai-text transition-colors hover:bg-bg-elevated focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-subtle disabled:cursor-not-allowed disabled:opacity-50"
           >
             {prompt}
           </button>

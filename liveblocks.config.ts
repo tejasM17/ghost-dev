@@ -1,3 +1,5 @@
+import type { AiChatFeedPayload, AiStatusFeedPayload } from "@/types/tasks";
+
 declare global {
   interface Liveblocks {
     Presence: {
@@ -17,8 +19,8 @@ declare global {
     };
 
     /**
-     * Realtime room events. AI design status is broadcast so every
-     * collaborator can follow Ghost AI progress in the status feed.
+     * Legacy room events (optional). Primary shared AI status uses the
+     * Liveblocks feed `ai-status-feed` with {@link FeedMessageData}.
      */
     RoomEvent:
       | {
@@ -30,6 +32,17 @@ declare global {
 
     ThreadMetadata: Record<string, never>;
     RoomInfo: Record<string, never>;
+
+    /** Metadata on Liveblocks feeds (unused for room feeds). */
+    FeedMetadata: Record<string, never>;
+
+    /**
+     * Payload on feed messages. Room uses two feeds with distinct shapes:
+     * - `ai-status-feed` → AiStatusFeedPayload
+     * - `ai-chat` → AiChatFeedPayload
+     * Always validate with the matching parser before rendering.
+     */
+    FeedMessageData: AiStatusFeedPayload | AiChatFeedPayload;
   }
 }
 

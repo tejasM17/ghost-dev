@@ -2,6 +2,7 @@
 
 import { useOthers, useUpdateMyPresence } from "@liveblocks/react/suspense";
 import { useReactFlow, useViewport } from "@xyflow/react";
+import { Loader2 } from "lucide-react";
 import { useCallback, type MouseEvent } from "react";
 
 /**
@@ -22,6 +23,7 @@ export function LiveCursors() {
         const screenY = cursor.y * zoom + vy;
         const color = other.info.color;
         const name = other.info.name || "Collaborator";
+        const thinking = other.presence.thinking === true;
 
         return (
           <div
@@ -33,10 +35,16 @@ export function LiveCursors() {
           >
             <CursorPointer color={color} />
             <div
-              className="ml-3 mt-0.5 max-w-[12rem] truncate rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white shadow-md"
+              className="ml-3 mt-0.5 flex max-w-[12rem] items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white shadow-md"
               style={{ backgroundColor: color }}
             >
-              {other.presence.thinking ? `${name} · thinking` : name}
+              {thinking ? (
+                <Loader2
+                  className="h-3 w-3 shrink-0 animate-spin opacity-95"
+                  aria-hidden
+                />
+              ) : null}
+              <span className="truncate">{name}</span>
             </div>
           </div>
         );

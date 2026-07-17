@@ -18,7 +18,8 @@ interface EditorShellProps {
 
 export function EditorShell({ initialOwned, initialShared }: EditorShellProps) {
   const router = useRouter();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Collapsed by default on /editor home (feature 24).
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const {
     ownedProjects,
     sharedProjects,

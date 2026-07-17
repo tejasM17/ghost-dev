@@ -28,11 +28,6 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import {
-  ClientSideSuspense,
-  LiveblocksProvider,
-  RoomProvider,
-} from "@liveblocks/react/suspense";
 import { useLiveblocksFlow } from "@liveblocks/react-flow";
 import "@liveblocks/react-flow/styles.css";
 
@@ -94,10 +89,9 @@ interface CanvasProps {
 /**
  * Client-side collaborative canvas for a project.
  *
- * Wires up Liveblocks (auth + room) and React Flow (`useLiveblocksFlow`)
- * together so nodes and edges sync between every collaborator. Also
- * hydrates from Vercel Blob when the room is empty and debounced-autosaves
- * canvas JSON through the project canvas API.
+ * Expects a parent `LiveblocksRoom` (auth + room). React Flow +
+ * `useLiveblocksFlow` keep nodes/edges in sync. Hydrates from Vercel Blob
+ * when the room is empty and debounced-autosaves canvas JSON via the API.
  */
 export function Canvas({
   roomId,
@@ -107,26 +101,17 @@ export function Canvas({
   onSaveReady,
 }: CanvasProps) {
   return (
-    <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
-      <RoomProvider
-        id={roomId}
-        initialPresence={{ cursor: null, thinking: false }}
-      >
-        <CanvasErrorBoundary>
-          <ClientSideSuspense fallback={<CanvasLoading />}>
-            <ReactFlowProvider>
-              <CollaborativeFlow
-                projectId={roomId}
-                templatesOpen={templatesOpen}
-                onTemplatesOpenChange={onTemplatesOpenChange}
-                onSaveStatusChange={onSaveStatusChange}
-                onSaveReady={onSaveReady}
-              />
-            </ReactFlowProvider>
-          </ClientSideSuspense>
-        </CanvasErrorBoundary>
-      </RoomProvider>
-    </LiveblocksProvider>
+    <CanvasErrorBoundary>
+      <ReactFlowProvider>
+        <CollaborativeFlow
+          projectId={roomId}
+          templatesOpen={templatesOpen}
+          onTemplatesOpenChange={onTemplatesOpenChange}
+          onSaveStatusChange={onSaveStatusChange}
+          onSaveReady={onSaveReady}
+        />
+      </ReactFlowProvider>
+    </CanvasErrorBoundary>
   );
 }
 
@@ -519,10 +504,10 @@ function CollaborativeFlow({
 }
 
 /**
- * Loading state shown inside the Liveblocks Suspense boundary. Matches
- * the editor's dark surface palette so it doesn't flash a light fallback.
+ * Loading state for the Liveblocks Suspense boundary. Matches the
+ * editor's dark surface palette so it doesn't flash a light fallback.
  */
-function CanvasLoading() {
+export function CanvasLoading() {
   const [dots, setDots] = useState(1);
 
   useEffect(() => {

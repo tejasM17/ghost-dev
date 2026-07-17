@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth";
 import { getUserColor, liveblocks } from "@/lib/liveblocks";
 import { getProjectWithAccess } from "@/lib/project-access";
+import { AI_CHAT_FEED_ID, AI_STATUS_FEED_ID } from "@/types/tasks";
 
 /**
  * Liveblocks ID-token auth endpoint.
@@ -90,6 +91,14 @@ export async function POST(request: Request) {
     );
   }
 
+  // Ensure room feeds exist before clients subscribe. Missing feeds can
+  // cause client `useFeedMessages` to hang until "Feed messages fetch timeout"
+  // (especially for collaborators joining before anyone created the feed).
+  await Promise.all([
+    ensureRoomFeed(roomId, AI_STATUS_FEED_ID),
+    ensureRoomFeed(roomId, AI_CHAT_FEED_ID),
+  ]);
+
   // Mint an ID token bound to the current user. The userInfo payload is
   // what other clients read via useSelf / useOthers.
   const { status, body: responseBody } = await liveblocks.identifyUser(
@@ -98,4 +107,13 @@ export async function POST(request: Request) {
   );
 
   return new Response(responseBody, { status });
+}
+
+/** Create a Liveblocks feed if missing; ignore already-exists races. */
+async function ensureRoomFeed(roomId: string, feedId: string): Promise<void> {
+  try {
+    await liveblocks.createFeed({ roomId, feedId });
+  } catch {
+    // Feed already exists or concurrent create — safe to continue.
+  }
 }
