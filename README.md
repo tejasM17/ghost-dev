@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ghost AI
 
-## Getting Started
+[Liveblocks](https://liveblocks.io/docs) · [Trigger.dev](https://trigger.dev/docs) · [Clerk](https://clerk.com/docs) · [Prisma](https://www.prisma.io/docs) · [Vercel Blob](https://vercel.com/docs/storage/vercel-blob) · [Next.js](https://nextjs.org/docs)
 
-First, run the development server:
+Real-time collaborative system design workspace: prompt an AI agent onto a shared canvas, refine with collaborators, generate Markdown specs.
+
+**Stack:** Next.js 16 · Clerk · Prisma + PostgreSQL · Liveblocks + React Flow · Trigger.dev · Vercel Blob · Google AI (Gemini)
+
+## Local setup
+
+### Prerequisites
+
+- Node.js 20+
+- PostgreSQL
+- Accounts/keys for the services linked above, plus [Google AI](https://ai.google.dev)
+
+### Install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`postinstall` runs `prisma generate`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy keys into `.env.local` (and `DATABASE_URL` in `.env` if Prisma CLI needs it):
 
-## Learn More
+```bash
+# Database
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DB?schema=public"
 
-To learn more about Next.js, take a look at the following resources:
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL=/editor
+NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL=/editor
+NEXT_PUBLIC_CLERK_AFTER_SIGN_OUT_URL=/
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Liveblocks
+LIVEBLOCKS_SECRET_KEY=
+LIVEBLOCKS_PUBLIC_KEY=
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Trigger.dev
+TRIGGER_SECRET_KEY=
 
-## Deploy on Vercel
+# Vercel Blob (canvas snapshots + specs)
+BLOB_READ_WRITE_TOKEN=
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Google AI (design + spec agents)
+GOOGLE_AI_API_KEY=
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Database
+
+```bash
+npx prisma migrate dev
+```
+
+### Run
+
+Two terminals:
+
+```bash
+# App
+npm run dev
+```
+
+```bash
+# Background tasks (design + spec generation)
+npx trigger.dev@latest dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+Product/architecture notes: `context/project-overview.md`, `context/architecture-context.md`, `context/progress-tracker.md`.
