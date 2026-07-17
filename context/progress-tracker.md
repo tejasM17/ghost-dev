@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 27** — Completed
-- Next: feature 28 (TBD)
+- **Feature 29** — Completed
+- Next: feature 30 (TBD)
 
 ## Stack (quick)
 
@@ -16,11 +16,11 @@ Keep this file short. Read feature specs + code for detail.
 | Auth | Clerk (`proxy.ts` middleware) |
 | DB | Prisma 7 + PostgreSQL (`lib/prisma.ts`, `prisma/models/`) |
 | Canvas | Liveblocks + React Flow (`@liveblocks/react-flow`) |
-| Blob | Vercel Blob (`@vercel/blob`) — canvas JSON snapshots |
+| Blob | Vercel Blob (`@vercel/blob`) — canvas JSON + Markdown specs |
 | Jobs | Trigger.dev (`src/trigger/`, `@trigger.dev/sdk`) |
 | Types | `types/canvas.ts`, `types/tasks.ts` (AI status + chat feed schemas) |
 
-## Done (features 01–27)
+## Done (features 01–29)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -51,49 +51,24 @@ Keep this file short. Read feature specs + code for detail.
 | 25 | Sidebar chat feed | Liveblocks feed `ai-chat`, Zod validation, send via sidebar input |
 | 26 | AI chat functional | design submit + `useRealtimeRun`, status strip, AI final chat message |
 | 27 | Spec generation flow | `POST /api/ai/spec`, `POST /api/ai/spec/token`, `src/trigger/generate-spec.ts` |
+| 28 | Spec persistence + download | `ProjectSpec`, blob upload in `generate-spec`, download route |
+| 29 | Spec UI integration | Specs tab list/preview/download in AI sidebar |
 
-## Feature 27 (done)
-
-Verified against `context/feature-specs/27-spec-generation-flow.md`:
-
-- **Trigger**: `POST /api/ai/spec` accepts `{ roomId, chatHistory, nodes, edges }`, auth + access via `roomId` (no client `projectId`), triggers `generate-spec`, creates `TaskRun`, returns `runId`
-- **Token**: `POST /api/ai/spec/token` accepts `runId`, verifies TaskRun owner, issues Trigger public token scoped to that run with `expirationTime: "1hr"`
-- **Task**: `src/trigger/generate-spec.ts` — Zod payload, Gemini Markdown via `@ai-sdk/google` + `generateText`, run `metadata` for status, returns plain Markdown in task output (no persistence)
-- **Scope**: backend only — no frontend, no spec editor, no final spec storage
-- **Key files**: `app/api/ai/spec/route.ts`, `app/api/ai/spec/token/route.ts`, `src/trigger/generate-spec.ts`
-
-## Feature 26 (done)
-
-Verified against `context/feature-specs/26-ai-chat-functional.md`:
-
-- **Submit**: user msg → `ai-chat` feed → `POST /api/ai/design` with `{ prompt, roomId, projectId }` → store `runId` + `publicToken` (token from response or `POST /api/ai/design/token`)
-- **Run tracking**: `useRealtimeRun(runId, { accessToken: publicToken })`; input disabled + button spinner while active
-- **On complete/fail**: push assistant message to `ai-chat`, clear run state; API/network errors also as chat messages
-- **Status strip**: latest text from `ai-status-feed` via `useAiActivityState`, only while run active
-- **Canvas**: no manual node/edge sync — Liveblocks/`useLiveblocksFlow` only
-- **UI**: user bubbles + submit use green `#62C073` (palette); AI bubbles dark elevated
-- **Wiring**: `workspace-shell` passes `roomId` + `projectId` + `roomConnected` into `AiSidebar`
-- **Scope**: frontend only (no backend/Trigger task changes)
-- **Key files**: `components/editor/ai-sidebar.tsx`, `ai-chat-feed.tsx`, `ai-status-feed.tsx`
-
-## Bugfixes (shared projects + sidebar)
-
-- Collaborator "Feed messages fetch timeout" at `AiSidebar` / `RoomAwareArchitectTab`: ensure feeds on auth + non-suspense `useFeedMessages` so errors do not crash the tree
+## Bugfixes 
+- currently no bugs
 
 ## Architecture invariants
 
 - RSC by default; `"use client"` only for interactivity / realtime
-- Project metadata in Postgres; live graph in Liveblocks; canvas snapshots in Vercel Blob
+- Project metadata in Postgres; live graph in Liveblocks; canvas snapshots + specs in Vercel Blob
 - Auth + ownership checked on every mutation API
 - UI tokens only (`bg-base`, `text-copy-*`, etc.) — no raw color utilities
 - Canvas types stay shared: `types/canvas.ts`
 - Do not invent features — follow `context/feature-specs/*` and user context
 - Chat feed (`ai-chat`) stays separate from status feed (`ai-status-feed`)
 - Spec access is resolved from authenticated user + `roomId` (never client-supplied project IDs)
-
-## Bugfixes (Liveblocks canvas issues 2–8)
-
-- currently have no Bugs Or Errors
+- Spec download routes re-check project access and never expose private Blob URLs
+- Spec list returns metadata only; preview content is fetched on demand via the download route
 
 ## Open
 

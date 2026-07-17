@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -31,6 +32,8 @@ import { useShareDialog } from "@/hooks/use-share-dialog";
 interface WorkspaceShellProps {
   project: { id: string; name: string; ownerId: string } | null;
   currentRoomId: string;
+  /** Clerk user id — used for owner checks independent of sidebar lists. */
+  currentUserId: string;
   ownedProjects: ProjectData[];
   sharedProjects: ProjectData[];
 }
@@ -42,9 +45,11 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({
   project,
   currentRoomId,
+  currentUserId,
   ownedProjects,
   sharedProjects,
 }: WorkspaceShellProps) {
+  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -64,10 +69,9 @@ export function WorkspaceShell({
     latestSaveRef.current();
   }, []);
 
-  // Determine if current user is owner by checking against the projects list
-  const isOwner = project
-    ? ownedProjects.some((p) => p.id === project.id && p.role === "owner")
-    : false;
+  // Owner is the project.ownerId match — do not rely on sidebar list alone
+  // (lists can be empty on edge paths; ownerId is authoritative).
+  const isOwner = project ? project.ownerId === currentUserId : false;
 
   // Share dialog state
   const shareDialog = useShareDialog(
@@ -97,6 +101,7 @@ export function WorkspaceShell({
             ownedProjects={ownedProjects}
             sharedProjects={sharedProjects}
             currentRoomId={currentRoomId}
+            onCreateProject={() => router.push("/editor")}
           />
           <AccessDenied />
           <AiSidebar
@@ -154,6 +159,7 @@ export function WorkspaceShell({
         ownedProjects={ownedProjects}
         sharedProjects={sharedProjects}
         currentRoomId={currentRoomId}
+        onCreateProject={() => router.push("/editor")}
       />
 
       {/* Share Dialog */}
@@ -334,6 +340,8 @@ interface ProjectSidebarProps {
   ownedProjects: ProjectData[];
   sharedProjects: ProjectData[];
   currentRoomId: string;
+  /** Navigate to editor home to create a project (full create dialog lives there). */
+  onCreateProject: () => void;
 }
 
 function ProjectSidebar({
@@ -342,7 +350,15 @@ function ProjectSidebar({
   ownedProjects,
   sharedProjects,
   currentRoomId,
+  onCreateProject,
 }: ProjectSidebarProps) {
+  // Default to Shared when the active project is shared and My is empty of active.
+  const defaultTab =
+    sharedProjects.some((p) => p.id === currentRoomId) &&
+    !ownedProjects.some((p) => p.id === currentRoomId)
+      ? "shared"
+      : "my-projects";
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -380,7 +396,10 @@ function ProjectSidebar({
           </button>
         </div>
 
-        <Tabs defaultValue="my-projects" className="flex flex-1 flex-col overflow-hidden">
+        <Tabs
+          defaultValue={defaultTab}
+          className="flex flex-1 flex-col overflow-hidden"
+        >
           <div className="px-4 pt-3">
             <TabsList className="inline-flex h-9 w-full items-center justify-center rounded-xl bg-bg-elevated p-1 text-text-muted">
               <TabsTrigger
@@ -425,8 +444,7 @@ function ProjectSidebar({
             type="button"
             className="w-full"
             size="default"
-            // Create project not wired yet
-            onClick={() => {}}
+            onClick={onCreateProject}
           >
             <Plus className="h-4 w-4" />
             New Project

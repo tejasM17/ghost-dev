@@ -17,45 +17,53 @@ const tokenRequestSchema = z.object({
  * Token expiration is 1 hour.
  */
 export async function POST(request: Request) {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  let body: unknown = null;
   try {
-    body = await request.json();
-  } catch {
-    body = null;
-  }
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const parsed = tokenRequestSchema.safeParse(body);
-  if (!parsed.success) {
+    let body: unknown = null;
+    try {
+      body = await request.json();
+    } catch {
+      body = null;
+    }
+
+    const parsed = tokenRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid payload. Expected { runId } as a non-empty string." },
+        { status: 400 },
+      );
+    }
+
+    const { runId } = parsed.data;
+
+    const taskRun = await prisma.taskRun.findUnique({
+      where: { runId },
+      select: { runId: true, userId: true },
+    });
+
+    if (!taskRun || taskRun.userId !== userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const token = await auth.createPublicToken({
+      scopes: {
+        read: {
+          runs: [taskRun.runId],
+        },
+      },
+      expirationTime: "1hr",
+    });
+
+    return NextResponse.json({ token });
+  } catch (error) {
+    console.error("[POST /api/ai/spec/token]", error);
     return NextResponse.json(
-      { error: "Invalid payload. Expected { runId } as a non-empty string." },
-      { status: 400 },
+      { error: "Failed to issue spec run token" },
+      { status: 500 },
     );
   }
-
-  const { runId } = parsed.data;
-
-  const taskRun = await prisma.taskRun.findUnique({
-    where: { runId },
-    select: { runId: true, userId: true },
-  });
-
-  if (!taskRun || taskRun.userId !== userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const token = await auth.createPublicToken({
-    scopes: {
-      read: {
-        runs: [taskRun.runId],
-      },
-    },
-    expirationTime: "1hr",
-  });
-
-  return NextResponse.json({ token });
 }

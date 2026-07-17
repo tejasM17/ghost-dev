@@ -1,7 +1,13 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { mutateFlow } from "@liveblocks/react-flow/node";
+import { put } from "@vercel/blob";
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import { generateText } from "ai";
 import { z } from "zod";
+
+import { liveblocks } from "@/lib/liveblocks";
+import { prisma } from "@/lib/prisma";
+import type { CanvasEdge, CanvasNode } from "@/types/canvas";
 
 /**
  * Chat history entry for spec generation context.
@@ -54,8 +60,8 @@ export type GenerateSpecPayload = z.infer<typeof generateSpecPayloadSchema>;
  * Spec generation task.
  *
  * Accepts the canvas graph and optional chat context, generates a Markdown
- * technical specification with Gemini, and surfaces progress via run metadata
- * for realtime client tracking. Does not persist the spec (later unit).
+ * technical specification with Gemini, uploads it to Vercel Blob, stores
+ * metadata on ProjectSpec, and surfaces progress via run metadata.
  */
 export const generateSpecTask = task({
   id: "generate-spec",
@@ -96,9 +102,25 @@ export const generateSpecTask = task({
 
     try {
       metadata.set("status", "processing");
+      metadata.set("message", "Reading live canvas graph…");
+
+      // Prefer the collaborative Liveblocks room (source of truth). Fall back
+      // to the client snapshot when the room is empty or unreadable.
+      const liveSnapshot = await readFlowSnapshot(roomId);
+      const graphNodes =
+        liveSnapshot.nodes.length > 0 ? liveSnapshot.nodes : nodes;
+      const graphEdges =
+        liveSnapshot.edges.length > 0 ? liveSnapshot.edges : edges;
+
+      if (graphNodes.length === 0) {
+        throw new Error(
+          "Canvas is empty. Add architecture nodes before generating a spec.",
+        );
+      }
+
       metadata.set("message", "Analyzing architecture graph…");
 
-      const compactGraph = compactCanvas(nodes, edges);
+      const compactGraph = compactCanvas(graphNodes, graphEdges);
       const compactChat = compactChatHistory(chatHistory);
 
       metadata.set("message", "Writing Markdown specification with Gemini…");
@@ -114,22 +136,32 @@ export const generateSpecTask = task({
         throw new Error("Gemini returned an empty specification");
       }
 
+      metadata.set("message", "Saving specification…");
+
+      const persisted = await persistSpecMarkdown({
+        projectId,
+        markdown,
+      });
+
       metadata.set("status", "complete");
       metadata.set("message", "Specification ready.");
       metadata.set("charCount", markdown.length);
+      metadata.set("specId", persisted.specId);
 
       logger.log("generate-spec complete", {
         projectId,
         roomId,
         runId,
+        specId: persisted.specId,
         charCount: markdown.length,
       });
 
-      // Plain Markdown task output — persistence is a later feature unit.
       return {
         ok: true as const,
         projectId,
         roomId,
+        specId: persisted.specId,
+        filePath: persisted.filePath,
         content: markdown,
       };
     } catch (error) {
@@ -230,6 +262,89 @@ function compactChatHistory(
     });
   }
   return lines;
+}
+
+/**
+ * Read current collaborative nodes/edges without mutating them.
+ * Mirrors design-agent so specs always reflect the live room graph.
+ */
+async function readFlowSnapshot(roomId: string): Promise<{
+  nodes: CanvasNode[];
+  edges: CanvasEdge[];
+}> {
+  let nodes: CanvasNode[] = [];
+  let edges: CanvasEdge[] = [];
+
+  try {
+    await mutateFlow<CanvasNode, CanvasEdge>(
+      { client: liveblocks, roomId },
+      (flow) => {
+        nodes = flow.nodes.map((n) => ({
+          ...n,
+          position: { ...n.position },
+          data: { ...n.data },
+        })) as CanvasNode[];
+        edges = flow.edges.map((e) => ({
+          ...e,
+          data: e.data ? { ...e.data } : e.data,
+        })) as CanvasEdge[];
+      },
+    );
+  } catch (error) {
+    logger.warn("generate-spec could not read Liveblocks flow; using payload", {
+      roomId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return { nodes, edges };
+}
+
+/**
+ * Upload Markdown to private Vercel Blob and record metadata on ProjectSpec.
+ * Follows the same pattern as canvas snapshots: Blob holds content, Prisma
+ * stores the blob URL (`filePath`). Path: specs/{projectId}/{specId}.md
+ */
+async function persistSpecMarkdown(input: {
+  projectId: string;
+  markdown: string;
+}): Promise<{ specId: string; filePath: string }> {
+  // Create the row first so we have a stable specId for the blob pathname.
+  const pending = await prisma.projectSpec.create({
+    data: {
+      projectId: input.projectId,
+      // Temporary placeholder replaced immediately after upload.
+      filePath: "pending",
+    },
+    select: { id: true },
+  });
+
+  const pathname = `specs/${input.projectId}/${pending.id}.md`;
+
+  try {
+    const blob = await put(pathname, input.markdown, {
+      access: "private",
+      contentType: "text/markdown; charset=utf-8",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+
+    const updated = await prisma.projectSpec.update({
+      where: { id: pending.id },
+      data: { filePath: blob.url },
+      select: { id: true, filePath: true },
+    });
+
+    return { specId: updated.id, filePath: updated.filePath };
+  } catch (error) {
+    // Roll back orphan metadata if blob upload fails.
+    await prisma.projectSpec
+      .delete({ where: { id: pending.id } })
+      .catch(() => {
+        // Best-effort cleanup; original error is more important.
+      });
+    throw error;
+  }
 }
 
 /**

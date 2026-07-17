@@ -1,0 +1,17 @@
+// Generated Markdown technical specs for a project.
+//
+// Metadata only — Markdown content lives in Vercel Blob at `filePath`.
+// Path convention: specs/{projectId}/{specId}.md
+
+model ProjectSpec {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  filePath  String   @map("file_path")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, createdAt])
+  @@map("project_specs")
+}

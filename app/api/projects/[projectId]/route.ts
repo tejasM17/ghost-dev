@@ -90,5 +90,14 @@ export async function DELETE(
 
   await prisma.project.delete({ where: { id: projectId } });
 
+  // Best-effort: drop the Liveblocks room so deleted projects cannot be
+  // re-joined with a stale room id. DB is source of truth; auth will 403.
+  try {
+    const { liveblocks } = await import("@/lib/liveblocks");
+    await liveblocks.deleteRoom(projectId);
+  } catch (error) {
+    console.error("Failed to delete Liveblocks room on project delete", error);
+  }
+
   return new NextResponse(null, { status: 204 });
 }

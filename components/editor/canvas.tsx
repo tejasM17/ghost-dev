@@ -42,7 +42,6 @@ import { ShapePanel, type ShapeDragPayload } from "./shape-panel";
 import { CanvasNodeRenderer } from "./canvas-node";
 import { CanvasEdgeRenderer } from "./canvas-edge";
 import { CanvasControls } from "./canvas-controls";
-import { AiStatusFeed } from "./ai-status-feed";
 import { LiveCursors, useCursorPresence } from "./live-cursors";
 import { PresenceAvatars } from "./presence-avatars";
 import { StarterTemplatesModal } from "./starter-templates-modal";
@@ -486,7 +485,6 @@ function CollaborativeFlow({
 
       <LiveCursors />
       <PresenceAvatars />
-      <AiStatusFeed />
 
       {/* Zoom + undo/redo bar (bottom-left); shape palette (bottom-center) */}
       <CanvasControls />

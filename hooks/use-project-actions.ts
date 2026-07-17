@@ -104,7 +104,12 @@ export function useProjectActions(initialOwned: ProjectData[], initialShared: Pr
 
       startTransition(() => {
         setOwnedProjects((current) => [
-          { ...project, role: "owner" },
+          {
+            id: project.id,
+            name: project.name,
+            slug: slugify(project.name),
+            role: "owner" as const,
+          },
           ...current,
         ]);
         closeDialog();
@@ -175,8 +180,16 @@ export function useProjectActions(initialOwned: ProjectData[], initialShared: Pr
           current.filter((p) => p.id !== deletedId),
         );
         closeDialog();
-        // If the deleted project is the current route, redirect to /editor
-        router.refresh();
+        // Leave a deleted project's workspace so the user is not stuck on 403.
+        if (
+          typeof window !== "undefined" &&
+          deletedId &&
+          window.location.pathname.includes(`/editor/${deletedId}`)
+        ) {
+          router.push("/editor");
+        } else {
+          router.refresh();
+        }
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete project");

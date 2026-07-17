@@ -52,50 +52,62 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 /**
  * Check if the current user has access to a project (as owner or collaborator).
  * Returns the project if access is granted, null otherwise.
+ * Never throws — Clerk/DB failures return null so routes can respond 401/403
+ * instead of an unhandled 500.
  */
 export async function getProjectWithAccess(projectId: string): Promise<{
   id: string;
   name: string;
   ownerId: string;
 } | null> {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
-    return null;
-  }
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return null;
+    }
 
-  const { prisma } = await import("@/lib/prisma");
+    const { prisma } = await import("@/lib/prisma");
 
-  // First, check if the project exists and user is the owner
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { id: true, name: true, ownerId: true },
-  });
+    // First, check if the project exists and user is the owner
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, name: true, ownerId: true },
+    });
 
-  if (!project) {
-    return null;
-  }
+    if (!project) {
+      return null;
+    }
 
-  // Owner has access
-  if (project.ownerId === currentUser.userId) {
-    return project;
-  }
+    // Owner has access
+    if (project.ownerId === currentUser.userId) {
+      return project;
+    }
 
-  // Check if user is a collaborator (by email). Emails are stored lowercased.
-  const collaborator = await prisma.projectCollaborator.findUnique({
-    where: {
-      projectId_email: {
-        projectId: project.id,
-        email: currentUser.email.toLowerCase(),
+    // Collaborator match requires a resolved email.
+    if (!currentUser.email) {
+      return null;
+    }
+
+    // Check if user is a collaborator (by email). Emails are stored lowercased.
+    const collaborator = await prisma.projectCollaborator.findUnique({
+      where: {
+        projectId_email: {
+          projectId: project.id,
+          email: currentUser.email.toLowerCase(),
+        },
       },
-    },
-  });
+    });
 
-  if (collaborator) {
-    return project;
+    if (collaborator) {
+      return project;
+    }
+
+    // No access
+    return null;
+  } catch (error) {
+    console.error("[getProjectWithAccess]", error);
+    return null;
   }
-
-  // No access
-  return null;
 }
 
 /**
@@ -114,11 +126,16 @@ export interface ClerkUserData {
 export async function getClerkUserByEmail(
   email: string,
 ): Promise<ClerkUserData | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
   const clerk = await clerkClient();
 
   // Search for user by email using Clerk's getUserList
   const response = await clerk.users.getUserList({
-    emailAddress: [email.toLowerCase()],
+    emailAddress: [normalized],
     limit: 1,
   });
 
@@ -135,7 +152,7 @@ export async function getClerkUserByEmail(
   };
 
   return {
-    email: email.toLowerCase(),
+    email: normalized,
     name: user.fullName ?? user.firstName ?? null,
     avatarUrl: user.imageUrl ?? null,
   };

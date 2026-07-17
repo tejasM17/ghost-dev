@@ -19,6 +19,7 @@ model Project {
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   collaborators   ProjectCollaborator[]
+  specs           ProjectSpec[]
 
   @@index([ownerId])
   @@index([createdAt])

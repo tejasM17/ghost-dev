@@ -6,9 +6,7 @@ import {
   useFeedMessages,
   useOthers,
 } from "@liveblocks/react";
-import { AlertCircle, Bot, CheckCircle2, Loader2 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import {
   AI_STATUS_FEED_ID,
   aiStatusDisplayText,
@@ -70,62 +68,8 @@ export function useAiActivityState(): {
 }
 
 /**
- * Compact canvas toast for the latest AI status message (shared room feed).
- * Full history is intentionally not rendered.
+ * Canvas status toast intentionally not rendered.
+ * Spec 28: do not show AI status states on the canvas — only presence
+ * cursors / thinking indicators. Status text remains available via
+ * {@link useAiActivityState} for the AI sidebar strip.
  */
-export function AiStatusFeed() {
-  const { latest, displayText } = useAiActivityState();
-
-  if (!latest || !displayText) return null;
-
-  return (
-    <div
-      className="pointer-events-none absolute bottom-24 left-1/2 z-30 flex w-[min(28rem,calc(100%-2rem))] -translate-x-1/2 flex-col gap-2"
-      aria-live="polite"
-      aria-label="AI design status"
-    >
-      <StatusCard phase={latest.phase} text={displayText} />
-    </div>
-  );
-}
-
-function StatusCard({
-  phase,
-  text,
-}: {
-  phase: AiStatusFeedPayload["phase"];
-  text: string;
-}) {
-  const isError = phase === "error";
-  const isComplete = phase === "complete";
-  const isBusy = phase === "start" || phase === "processing";
-
-  return (
-    <div
-      className={cn(
-        "pointer-events-auto flex items-start gap-2.5 rounded-2xl border px-3 py-2.5 shadow-lg backdrop-blur-md",
-        isError && "border-state-error/40 bg-bg-elevated/95",
-        isComplete && "border-state-success/40 bg-bg-elevated/95",
-        isBusy && "border-border-default bg-bg-surface/95",
-      )}
-    >
-      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-bg-subtle">
-        {isBusy ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-accent-ai-text" />
-        ) : isComplete ? (
-          <CheckCircle2 className="h-3.5 w-3.5 text-state-success" />
-        ) : isError ? (
-          <AlertCircle className="h-3.5 w-3.5 text-state-error" />
-        ) : (
-          <Bot className="h-3.5 w-3.5 text-accent-ai-text" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
-          Ghost AI
-        </p>
-        <p className="text-sm text-text-primary">{text}</p>
-      </div>
-    </div>
-  );
-}

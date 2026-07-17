@@ -24,89 +24,105 @@ import { AI_CHAT_FEED_ID, AI_STATUS_FEED_ID } from "@/types/tasks";
  * caller can see.
  */
 export async function POST(request: Request) {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Liveblocks sends the active RoomProvider ID as `{ room }` when an
-  // `authEndpoint` URL is configured. That ID is the project ID here.
-  let body: unknown = null;
   try {
-    body = await request.json();
-  } catch {
-    body = null;
-  }
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const roomId =
-    body !== null && typeof body === "object" && "room" in body
-      ? (body as { room: unknown }).room
-      : null;
+    // Liveblocks sends the active RoomProvider ID as `{ room }` when an
+    // `authEndpoint` URL is configured. That ID is the project ID here.
+    let body: unknown = null;
+    try {
+      body = await request.json();
+    } catch {
+      body = null;
+    }
 
-  if (typeof roomId !== "string" || roomId.length === 0) {
-    return NextResponse.json(
-      { error: "room is required" },
-      { status: 400 },
+    const roomId =
+      body !== null && typeof body === "object" && "room" in body
+        ? (body as { room: unknown }).room
+        : null;
+
+    if (typeof roomId !== "string" || roomId.length === 0) {
+      return NextResponse.json(
+        { error: "room is required" },
+        { status: 400 },
+      );
+    }
+
+    // Verify project access. Returns null when the project doesn't exist OR
+    // the user has no membership — spec mandates 403 in both cases.
+    const project = await getProjectWithAccess(roomId);
+    if (!project) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Resolve display name and avatar from Clerk. Falls back to safe
+    // defaults if the user lookup fails (e.g. a collaborator email that
+    // isn't associated with a Clerk account yet).
+    let name = currentUser.email || "Collaborator";
+    let avatar = "";
+    try {
+      if (currentUser.email) {
+        const clerkUser = await getClerkUserByEmail(currentUser.email);
+        name = clerkUser?.name ?? currentUser.email;
+        avatar = clerkUser?.avatarUrl ?? "";
+      }
+    } catch (error) {
+      console.error("Failed to resolve Clerk user info for Liveblocks", error);
+    }
+    const color = getUserColor(currentUser.userId);
+
+    // Ensure the room exists, then grant this user write access.
+    // getOrCreateRoom only applies usersAccesses on *create* — if the owner
+    // already created the room, a collaborator would still be locked out
+    // (Liveblocks 4001 / "You have no access to this room"). Always update
+    // after create-or-get so every verified member receives room:write.
+    // Project membership is enforced above; rooms stay private by default.
+    try {
+      await liveblocks.getOrCreateRoom(roomId, {
+        defaultAccesses: [],
+        usersAccesses: {
+          [currentUser.userId]: ["room:write"],
+        },
+      });
+      await liveblocks.updateRoom(roomId, {
+        usersAccesses: {
+          [currentUser.userId]: ["room:write"],
+        },
+      });
+    } catch (error) {
+      console.error("Failed to ensure Liveblocks room exists", error);
+      return NextResponse.json(
+        { error: "Failed to prepare collaboration room" },
+        { status: 500 },
+      );
+    }
+
+    // Ensure room feeds exist before clients subscribe. Missing feeds can
+    // cause client `useFeedMessages` to hang until "Feed messages fetch timeout"
+    // (especially for collaborators joining before anyone created the feed).
+    await Promise.all([
+      ensureRoomFeed(roomId, AI_STATUS_FEED_ID),
+      ensureRoomFeed(roomId, AI_CHAT_FEED_ID),
+    ]);
+
+    // Mint an ID token bound to the current user. The userInfo payload is
+    // what other clients read via useSelf / useOthers.
+    const { status, body: responseBody } = await liveblocks.identifyUser(
+      { userId: currentUser.userId, groupIds: [] },
+      { userInfo: { name, avatar, color } },
     );
-  }
 
-  // Verify project access. Returns null when the project doesn't exist OR
-  // the user has no membership — spec mandates 403 in both cases.
-  const project = await getProjectWithAccess(roomId);
-  if (!project) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  // Resolve display name and avatar from Clerk. Falls back to safe
-  // defaults if the user lookup fails (e.g. a collaborator email that
-  // isn't associated with a Clerk account yet).
-  const clerkUser = await getClerkUserByEmail(currentUser.email);
-  const name = clerkUser?.name ?? currentUser.email;
-  const avatar = clerkUser?.avatarUrl ?? "";
-  const color = getUserColor(currentUser.userId);
-
-  // Ensure the room exists, then grant this user write access.
-  // getOrCreateRoom only applies usersAccesses on *create* — if the owner
-  // already created the room, a collaborator would still be locked out
-  // (Liveblocks 4001 / "You have no access to this room"). Always update
-  // after create-or-get so every verified member receives room:write.
-  // Project membership is enforced above; rooms stay private by default.
-  try {
-    await liveblocks.getOrCreateRoom(roomId, {
-      defaultAccesses: [],
-      usersAccesses: {
-        [currentUser.userId]: ["room:write"],
-      },
-    });
-    await liveblocks.updateRoom(roomId, {
-      usersAccesses: {
-        [currentUser.userId]: ["room:write"],
-      },
-    });
+    return new Response(responseBody, { status });
   } catch (error) {
-    console.error("Failed to ensure Liveblocks room exists", error);
+    console.error("[POST /api/liveblocks-auth]", error);
     return NextResponse.json(
-      { error: "Failed to prepare collaboration room" },
+      { error: "Failed to authenticate for collaboration" },
       { status: 500 },
     );
   }
-
-  // Ensure room feeds exist before clients subscribe. Missing feeds can
-  // cause client `useFeedMessages` to hang until "Feed messages fetch timeout"
-  // (especially for collaborators joining before anyone created the feed).
-  await Promise.all([
-    ensureRoomFeed(roomId, AI_STATUS_FEED_ID),
-    ensureRoomFeed(roomId, AI_CHAT_FEED_ID),
-  ]);
-
-  // Mint an ID token bound to the current user. The userInfo payload is
-  // what other clients read via useSelf / useOthers.
-  const { status, body: responseBody } = await liveblocks.identifyUser(
-    { userId: currentUser.userId, groupIds: [] },
-    { userInfo: { name, avatar, color } },
-  );
-
-  return new Response(responseBody, { status });
 }
 
 /** Create a Liveblocks feed if missing; ignore already-exists races. */

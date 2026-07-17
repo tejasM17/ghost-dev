@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentUserId, getClerkUsersByEmails } from "@/lib/auth";
+import {
+  getCurrentUserId,
+  getClerkUsersByEmails,
+  getProjectWithAccess,
+} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 interface InviteBody {
@@ -21,75 +25,58 @@ function readEmail(body: unknown): string | null {
  * List collaborators for a project. Owner and collaborators can view.
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { projectId } = await params;
+
+    // Shared membership check (owner or collaborator by email).
+    const project = await getProjectWithAccess(projectId);
+    if (!project) {
+      // Distinguish missing project vs no access when possible.
+      const exists = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { id: true },
+      });
+      if (!exists) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const collaborators = await prisma.projectCollaborator.findMany({
+      where: { projectId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Enrich with Clerk user data
+    const emails = collaborators.map((c) => c.email);
+    const clerkUsers = await getClerkUsersByEmails(emails);
+
+    const enrichedCollaborators = collaborators.map((c) => {
+      const clerkUser = clerkUsers.get(c.email);
+      return {
+        ...c,
+        createdAt: c.createdAt.toISOString(),
+        name: clerkUser?.name ?? null,
+        avatarUrl: clerkUser?.avatarUrl ?? null,
+      };
+    });
+
+    return NextResponse.json({ collaborators: enrichedCollaborators });
+  } catch (error) {
+    console.error("[GET /api/projects/.../collaborators]", error);
+    return NextResponse.json(
+      { error: "Failed to load collaborators" },
+      { status: 500 },
+    );
   }
-
-  const { projectId } = await params;
-
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { id: true, ownerId: true },
-  });
-
-  if (!project) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  // Check access: owner or collaborator
-  const isOwner = project.ownerId === userId;
-
-  // Get user's email from Clerk
-  const { clerkClient } = await import("@clerk/nextjs/server");
-  const clerk = await clerkClient();
-  const user = await clerk.users.getUser(userId);
-  const primaryEmail = user.emailAddresses.find(
-    (e) => e.id === user.primaryEmailAddressId
-  );
-  const userEmail = (
-    primaryEmail?.emailAddress ??
-    user.emailAddresses[0]?.emailAddress ??
-    ""
-  ).toLowerCase();
-
-  const actualCollaborator = await prisma.projectCollaborator.findUnique({
-    where: {
-      projectId_email: {
-        projectId: project.id,
-        email: userEmail,
-      },
-    },
-  });
-
-  const hasAccess = isOwner || !!actualCollaborator;
-  if (!hasAccess) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const collaborators = await prisma.projectCollaborator.findMany({
-    where: { projectId },
-    orderBy: { createdAt: "asc" },
-  });
-
-  // Enrich with Clerk user data
-  const emails = collaborators.map((c) => c.email);
-  const clerkUsers = await getClerkUsersByEmails(emails);
-
-  const enrichedCollaborators = collaborators.map((c) => {
-    const clerkUser = clerkUsers.get(c.email);
-    return {
-      ...c,
-      createdAt: c.createdAt.toISOString(),
-      name: clerkUser?.name ?? null,
-      avatarUrl: clerkUser?.avatarUrl ?? null,
-    };
-  });
-
-  return NextResponse.json({ collaborators: enrichedCollaborators });
 }
 
 /**

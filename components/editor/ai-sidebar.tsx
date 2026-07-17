@@ -11,8 +11,6 @@ import {
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import {
   Bot,
-  Download,
-  FileText,
   Loader2,
   Send,
   X,
@@ -23,6 +21,7 @@ import {
   type AiChatMessage,
 } from "@/components/editor/ai-chat-feed";
 import { useAiActivityState } from "@/components/editor/ai-status-feed";
+import { SpecsTab } from "@/components/editor/specs-tab";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -203,7 +202,11 @@ export function AiSidebar({
             value="specs"
             className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"
           >
-            <SpecsTab />
+            <SpecsTab
+              projectId={projectId}
+              roomId={roomId}
+              roomConnected={roomConnected}
+            />
           </TabsContent>
         </Tabs>
       </aside>
@@ -702,42 +705,4 @@ function EmptyArchitectState({
   );
 }
 
-function SpecsTab() {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-      <Button
-        type="button"
-        className="w-full rounded-xl bg-accent-ai text-white hover:bg-accent-ai/90"
-      >
-        Generate Spec
-      </Button>
 
-      <div className="rounded-2xl border border-border-default bg-bg-elevated p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-bg-subtle">
-            <FileText className="h-4 w-4 text-accent-ai-text" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold text-text-primary">
-              System Architecture Spec
-            </h3>
-            <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Demo export — a generated markdown overview of services,
-              data stores, and integration points will appear here.
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled
-              className="mt-3 gap-1.5 rounded-xl border-border-default text-text-muted"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
