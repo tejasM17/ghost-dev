@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 19** — Fixing Issues
-- Next: feature 20 (TBD)
+- **Feature 20** — Completed
+- Next: feature 21 (TBD)
 
 ## Stack (quick)
 
@@ -18,7 +18,7 @@ Keep this file short. Read feature specs + code for detail.
 | Canvas | Liveblocks + React Flow (`@liveblocks/react-flow`) |
 | Types | `types/canvas.ts` — `CanvasNode` / `CanvasEdge` |
 
-## Done (features 01–19)
+## Done (features 01–20)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -41,15 +41,17 @@ Keep this file short. Read feature specs + code for detail.
 | 17 | Canvas ergonomics | `canvas-controls.tsx`, `hooks/useKeyboardShortcuts.ts` |
 | 18 | Starter templates | `starter-templates.ts`, `starter-templates-modal.tsx` |
 | 19 | Presence avatars & cursors | `presence-avatars.tsx`, `live-cursors.tsx`, `liveblocks.config.ts` |
+| 20 | AI sidebar shell | `ai-sidebar.tsx`, wired from `workspace-shell.tsx` |
 
-## Feature 19 (current)
+## Feature 20 (current)
 
-- Presence type: `cursor` + `thinking` in `liveblocks.config.ts`
-- Canvas-only collaborator avatars (exclude Clerk current user) + Clerk `UserButton`
-- Overlapping stack (max 5) with `+N` overflow; initials fallback; divider when collabs exist
-- Live cursors for other participants via presence + React Flow mouse move/leave
-- Workspace floating top bar / sidebars; zoom controls sit under open project sidebar (`z-20`)
-- Editor home navbar has no presence stack (UserButton remains on home)
+- Extracted floating AI sidebar into `components/editor/ai-sidebar.tsx`
+- Parent-controlled open/close; preserved slide-in, placement, surface, shadow
+- Header: AI Workspace + Collaborate with Ghost AI + bot icon + close
+- Tabs: AI Architect | Specs (accent-ai active styling)
+- Architect: empty state, starter chips, local message bubbles, auto-resize textarea, Enter/Shift+Enter
+- Specs: Generate Spec button + static demo card with disabled download
+- No backend / Liveblocks / generation logic
 
 ## Bugfixes (shared projects + sidebar)
 

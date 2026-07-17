@@ -8,7 +8,6 @@ import {
   X,
   Network,
   Sparkles,
-  Bot,
   LayoutTemplate,
 } from "lucide-react";
 
@@ -18,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { ProjectData } from "@/hooks/use-project-actions";
 import { AccessDenied } from "@/components/editor/access-denied";
+import { AiSidebar } from "@/components/editor/ai-sidebar";
 import { Canvas } from "@/components/editor/canvas";
 import { ShareDialog } from "@/components/editor/share-dialog";
 import { useShareDialog } from "@/hooks/use-share-dialog";
@@ -31,7 +31,7 @@ interface WorkspaceShellProps {
 
 /**
  * Workspace shell for the editor. Contains the full-viewport layout with
- * navbar, left sidebar, canvas area, and right AI chat sidebar placeholder.
+ * navbar, left sidebar, canvas area, and right AI Workspace sidebar.
  */
 export function WorkspaceShell({
   project,
@@ -394,100 +394,3 @@ function ProjectRow({ project, isActive }: ProjectRowProps) {
   );
 }
 
-interface AiSidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-/**
- * Right sidebar for the AI Copilot. The toggle is wired (the AI button
- * in the navbar controls visibility), but the actual chat surface and
- * generation are intentionally out of scope here — this panel currently
- * shows the placeholder status and the future hooks that will attach.
- */
-function AiSidebar({ isOpen, onClose }: AiSidebarProps) {
-  return (
-    <>
-      {/* Mobile backdrop for AI sidebar */}
-      <button
-        type="button"
-        aria-hidden={!isOpen}
-        tabIndex={isOpen ? 0 : -1}
-        onClick={onClose}
-        aria-label="Close AI chat"
-        className={cn(
-          "fixed inset-0 z-30 bg-bg-base/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out md:hidden",
-          isOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0",
-        )}
-      />
-      <aside
-        aria-hidden={!isOpen}
-        className={cn(
-          "pointer-events-none fixed right-3 top-16 z-40 flex h-[calc(100vh-5rem)] w-80 flex-col overflow-hidden rounded-2xl border border-border-default bg-bg-surface/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-in-out",
-          isOpen
-            ? "translate-x-0 pointer-events-auto"
-            : "translate-x-[calc(100%+1.5rem)]",
-        )}
-      >
-        {/* Header */}
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default px-4">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-text-primary">
-              AI Copilot
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-accent-ai-text" />
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close AI chat"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-bg-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-subtle"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Subtitle */}
-        <div className="border-b border-border-default px-4 pb-3 pt-2">
-          <p className="text-xs text-text-muted">Placeholder panel</p>
-        </div>
-
-        {/* Body */}
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-          {/* Status card */}
-          <div className="rounded-2xl border border-border-default bg-bg-elevated p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-bg-subtle">
-                <Bot className="h-4 w-4 text-accent-ai-text" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <h3 className="text-sm font-semibold text-text-primary">
-                  Chat surface pending
-                </h3>
-                <p className="text-xs leading-relaxed text-text-muted">
-                  The toggle is wired. Messaging and generation are
-                  intentionally out of scope here.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Future hooks card */}
-          <div className="rounded-2xl border border-dashed border-border-default bg-bg-elevated/50 p-4">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-faint">
-              Future Hooks
-            </h3>
-            <p className="mt-2 text-xs leading-relaxed text-text-muted">
-              Prompt composer, run status, and architecture guidance will
-              attach to this sidebar.
-            </p>
-          </div>
-        </div>
-      </aside>
-    </>
-  );
-}
