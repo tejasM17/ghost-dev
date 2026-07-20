@@ -55,7 +55,7 @@ Keep this file short. Read feature specs + code for detail.
 | 29 | Spec UI integration | Specs tab list/preview/download in AI sidebar |
 
 ## Bugfixes 
-- currently no bugs
+- Trigger.dev local AI design/spec stuck in Production **Pending version**: `.env.local` had both `tr_dev_` and `tr_prod_` `TRIGGER_SECRET_KEY` lines; last value won so Next.js triggered Production with no deployed worker. Fixed by keeping only `tr_dev_` for local. Prod needs `tr_prod_` on the host **and** `npx trigger.dev@latest deploy`.
 
 ## Architecture invariants
 
