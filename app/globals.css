@@ -53,3 +53,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Hide Liveblocks "Powered by" badge (dashboard toggle requires a paid plan). */
+#liveblocks-badge {
+  display: none !important;
+}

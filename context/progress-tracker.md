@@ -54,8 +54,8 @@ Keep this file short. Read feature specs + code for detail.
 | 28 | Spec persistence + download | `ProjectSpec`, blob upload in `generate-spec`, download route |
 | 29 | Spec UI integration | Specs tab list/preview/download in AI sidebar |
 
-## Bugfixes 
-- currently None
+## Bugfixes
+- Hide third-party branding UI: Clerk "Development mode" / "Secured by clerk" footer (`app/layout.tsx` appearance) and Liveblocks "Powered by" badge (`#liveblocks-badge` in `app/globals.css`)
 
 ## Architecture invariants
 

@@ -33,6 +33,15 @@ export default function RootLayout({
         <ClerkProvider
           appearance={{
             theme: dark,
+            // Hide Clerk "Development mode" notice + "Secured by clerk" footer branding.
+            // True production keys also drop the dev notice; this keeps deployed UI clean
+            // even while using development instances / free-plan branding flags.
+            options: {
+              unsafe_disableDevelopmentModeWarnings: true,
+            },
+            elements: {
+              footerItem: { display: "none" },
+            },
             variables: {
               colorBackground: "var(--bg-surface)",
               colorInput: "var(--bg-elevated)",
