@@ -44,6 +44,11 @@ LIVEBLOCKS_SECRET_KEY=
 LIVEBLOCKS_PUBLIC_KEY=
 
 # Trigger.dev
+# Local: use the DEV secret (tr_dev_...) from the Trigger.dev dashboard → API keys.
+# Production (Vercel/hosting): set the PROD secret (tr_prod_...) and run:
+#   npx trigger.dev@latest deploy
+# Never put tr_prod_ in .env.local while developing — runs will go to Production
+# with no local worker and sit in "Pending version".
 TRIGGER_SECRET_KEY=
 
 # Vercel Blob (canvas snapshots + specs)
