@@ -4,8 +4,8 @@ Keep this file short. Read feature specs + code for detail.
 
 ## Phase
 
-- **Feature 29** — Completed
-- Next: feature 30 (TBD)
+- **Feature 32** — Completed
+- Next: feature 33 (TBD)
 
 ## Stack (quick)
 
@@ -20,7 +20,7 @@ Keep this file short. Read feature specs + code for detail.
 | Jobs | Trigger.dev (`src/trigger/`, `@trigger.dev/sdk`) |
 | Types | `types/canvas.ts`, `types/tasks.ts` (AI status + chat feed schemas) |
 
-## Done (features 01–29)
+## Done (features 01–32)
 
 | # | Feature | Key locations |
 | --- | --- | --- |
@@ -53,9 +53,15 @@ Keep this file short. Read feature specs + code for detail.
 | 27 | Spec generation flow | `POST /api/ai/spec`, `POST /api/ai/spec/token`, `src/trigger/generate-spec.ts` |
 | 28 | Spec persistence + download | `ProjectSpec`, blob upload in `generate-spec`, download route |
 | 29 | Spec UI integration | Specs tab list/preview/download in AI sidebar |
+| 30 | Get started page | `/get-started` project overview, workflow and auth CTAs; signed-out home redirect |
+| 31 | Authentication page redesign | Distinct sign-in/sign-up contexts, Ghost AI workspace preview, shadcn-themed Clerk forms |
+| 32 | Brand mark and favicon | Shared Ghost AI logo mark, SVG app icon and replacement multi-size favicon |
 
 ## Bugfixes
 - Hide third-party branding UI: Clerk "Development mode" / "Secured by clerk" footer (`app/layout.tsx` appearance) and Liveblocks "Powered by" badge (`#liveblocks-badge` in `app/globals.css`)
+- Project and canvas API responses expose display metadata and canvas content/status without returning private Vercel Blob URLs (`GET /api/projects`, canvas GET/PUT).
+- Canvas save input validates node and edge structure before persistence; canvas hydration uses `hasSnapshot` instead of depending on a client-visible Blob URL.
+- Clerk proxy leaves API authentication to route handlers so unauthenticated API requests receive JSON 401 responses instead of sign-in HTML redirects.
 
 ## Architecture invariants
 

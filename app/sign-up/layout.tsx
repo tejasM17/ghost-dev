@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { AuthLayout } from "@/components/auth/auth-layout";
 
 export const metadata: Metadata = {
-  title: "Sign up — Ghost dev",
-  description: "Create your Ghost dev workspace",
+  title: "Sign up — Ghost AI",
+  description: "Create your Ghost AI workspace",
 };
 
 export default function AuthLayoutPage({
@@ -12,5 +12,5 @@ export default function AuthLayoutPage({
 }: {
   children: React.ReactNode;
 }) {
-  return <AuthLayout signUpHref="/sign-in">{children}</AuthLayout>;
+  return <AuthLayout mode="sign-up">{children}</AuthLayout>;
 }

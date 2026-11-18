@@ -91,7 +91,7 @@ export function useCanvasLoad({
         const data = (await response.json()) as {
           nodes?: CanvasNode[];
           edges?: CanvasEdge[];
-          canvasJsonPath?: string | null;
+          hasSnapshot?: boolean;
         };
 
         const loadedNodes = Array.isArray(data.nodes) ? data.nodes : [];
@@ -99,7 +99,7 @@ export function useCanvasLoad({
 
         // Nothing stored (or empty snapshot) — leave the room empty.
         if (
-          !data.canvasJsonPath ||
+          !data.hasSnapshot ||
           (loadedNodes.length === 0 && loadedEdges.length === 0)
         ) {
           if (!cancelled) {

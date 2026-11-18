@@ -8,5 +8,5 @@ export default async function Home() {
     redirect("/editor");
   }
 
-  redirect("/sign-in");
+  redirect("/get-started");
 }

@@ -1,31 +1,47 @@
 import { get, put } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { getCurrentUserId, getProjectWithAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { CanvasEdge, CanvasNode } from "@/types/canvas";
-
-interface CanvasBody {
-  nodes?: unknown;
-  edges?: unknown;
-}
 
 interface CanvasSnapshot {
   nodes: CanvasNode[];
   edges: CanvasEdge[];
 }
 
+const canvasNodeSchema = z
+  .object({
+    id: z.string().min(1),
+    position: z.object({ x: z.number(), y: z.number() }),
+    data: z.record(z.string(), z.unknown()),
+  })
+  .passthrough();
+
+const canvasEdgeSchema = z
+  .object({
+    id: z.string().min(1),
+    source: z.string().min(1),
+    target: z.string().min(1),
+  })
+  .passthrough();
+
+const canvasSnapshotSchema = z.object({
+  nodes: z.array(canvasNodeSchema),
+  edges: z.array(canvasEdgeSchema),
+});
+
 /**
  * Validate canvas JSON body. Accepts an object with `nodes` and `edges`
  * arrays; anything else is rejected.
  */
 function parseCanvasBody(body: unknown): CanvasSnapshot | null {
-  if (body === null || typeof body !== "object") return null;
-  const { nodes, edges } = body as CanvasBody;
-  if (!Array.isArray(nodes) || !Array.isArray(edges)) return null;
+  const parsed = canvasSnapshotSchema.safeParse(body);
+  if (!parsed.success) return null;
   return {
-    nodes: nodes as CanvasNode[],
-    edges: edges as CanvasEdge[],
+    nodes: parsed.data.nodes as CanvasNode[],
+    edges: parsed.data.edges as CanvasEdge[],
   };
 }
 
@@ -78,11 +94,11 @@ export async function PUT(
     const updated = await prisma.project.update({
       where: { id: projectId },
       data: { canvasJsonPath: blob.url },
-      select: { id: true, canvasJsonPath: true, updatedAt: true },
+      select: { updatedAt: true },
     });
 
     return NextResponse.json({
-      canvasJsonPath: updated.canvasJsonPath,
+      saved: true,
       updatedAt: updated.updatedAt,
     });
   } catch (error) {
@@ -125,7 +141,7 @@ export async function GET(
       return NextResponse.json({
         nodes: [] as CanvasNode[],
         edges: [] as CanvasEdge[],
-        canvasJsonPath: null,
+        hasSnapshot: false,
       });
     }
 
@@ -164,7 +180,7 @@ export async function GET(
       return NextResponse.json({
         nodes: snapshot.nodes,
         edges: snapshot.edges,
-        canvasJsonPath: record.canvasJsonPath,
+        hasSnapshot: true,
       });
     } catch {
       return NextResponse.json(

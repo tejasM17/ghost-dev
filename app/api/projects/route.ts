@@ -35,10 +35,22 @@ export async function GET() {
       currentUser.email,
     );
 
+    // Keep artifact references and internal ownership fields server-side.
+    // The editor only needs stable identity and display metadata here.
+    const toProjectSummary = (project: (typeof owned)[number]) => ({
+      id: project.id,
+      name: project.name,
+      createdAt: project.createdAt.toISOString(),
+      updatedAt: project.updatedAt.toISOString(),
+    });
+
+    const ownedProjects = owned.map(toProjectSummary);
+    const sharedProjects = shared.map(toProjectSummary);
+
     return NextResponse.json({
-      projects: owned,
-      owned,
-      shared,
+      projects: ownedProjects,
+      owned: ownedProjects,
+      shared: sharedProjects,
     });
   } catch (error) {
     console.error("[GET /api/projects]", error);
