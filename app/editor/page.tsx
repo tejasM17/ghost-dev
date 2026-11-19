@@ -12,9 +12,9 @@ import { EditorShell } from "@/components/editor/editor-shell";
 export default async function EditorPage() {
   const currentUser = await getCurrentUser();
 
-  // Redirect unauthenticated users to sign-in
+  // Route unauthenticated users through the public landing page first.
   if (!currentUser) {
-    redirect("/sign-in");
+    redirect("/get-started");
   }
 
   const { owned, shared } = await getAllProjects(currentUser.userId, currentUser.email);

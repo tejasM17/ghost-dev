@@ -20,7 +20,7 @@ export default async function EditorRoomPage({ params }: EditorRoomPageProps) {
   // Check authentication
   const currentUser = await getCurrentUser();
   if (!currentUser) {
-    redirect("/sign-in");
+    redirect("/get-started");
   }
 
   // Always load sidebar lists so access-denied and owner/collaborator

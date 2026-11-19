@@ -58,6 +58,9 @@ Keep this file short. Read feature specs + code for detail.
 | 32 | Brand mark and favicon | Shared Ghost AI logo mark, SVG app icon and replacement multi-size favicon |
 
 ## Bugfixes
+- Liveblocks client, React, React Flow, UI, and Node SDK versions are pinned to the same release to prevent duplicate core versions at runtime.
+- Unauthenticated page requests are routed to `/get-started`, where visitors can choose sign-in or sign-up; APIs keep their JSON auth responses.
+- Clerk sign-in and sign-up now force navigation to `/editor`; sign-out returns to `/get-started` on the current host in development and production.
 - Hide third-party branding UI: Clerk "Development mode" / "Secured by clerk" footer (`app/layout.tsx` appearance) and Liveblocks "Powered by" badge (`#liveblocks-badge` in `app/globals.css`)
 - Project and canvas API responses expose display metadata and canvas content/status without returning private Vercel Blob URLs (`GET /api/projects`, canvas GET/PUT).
 - Canvas save input validates node and edge structure before persistence; canvas hydration uses `hasSnapshot` instead of depending on a client-visible Blob URL.

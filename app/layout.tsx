@@ -31,6 +31,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ClerkProvider
+          signInForceRedirectUrl="/editor"
+          signUpForceRedirectUrl="/editor"
+          afterSignOutUrl="/get-started"
           appearance={{
             theme: dark,
             // Hide Clerk "Development mode" notice + "Secured by clerk" footer branding.

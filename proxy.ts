@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 // Public routes — sign-in and sign-up env vars are read by Clerk directly.
 const isPublicRoute = createRouteMatcher([
@@ -11,8 +12,13 @@ const isApiRoute = createRouteMatcher(["/api(.*)", "/trpc(.*)"]);
 export default clerkMiddleware(async (auth, req) => {
   // API handlers return JSON 401/403 responses themselves. Clerk's default
   // protection redirect would turn unauthenticated API calls into HTML 200s.
-  if (!isPublicRoute(req) && !isApiRoute(req)) {
-    await auth.protect();
+  if (isPublicRoute(req) || isApiRoute(req)) {
+    return;
+  }
+
+  const { isAuthenticated } = await auth();
+  if (!isAuthenticated) {
+    return NextResponse.redirect(new URL("/get-started", req.url));
   }
 });
 

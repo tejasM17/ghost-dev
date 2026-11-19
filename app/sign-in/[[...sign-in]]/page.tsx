@@ -4,6 +4,8 @@ import { shadcn } from "@clerk/ui/themes";
 export default function SignInPage() {
   return (
     <SignIn
+      forceRedirectUrl="/editor"
+      signUpForceRedirectUrl="/editor"
       appearance={{
         theme: shadcn,
         variables: {
